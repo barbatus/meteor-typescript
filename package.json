@@ -1,0 +1,36 @@
+{
+  "name": "meteor-typescript",
+  "author": "@barbatus",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "TypeScript wrapper package for use with Meteor",
+  "keywords": [
+    "meteor",
+    "typescript",
+    "es6",
+    "es7",
+    "transpiler",
+    "transpilation",
+    "compilation"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "tests/run.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/barbatus/meteor-typescript.git"
+  },
+  "bugs": {
+    "url": "https://github.com/barbatus/meteor-typescript/issues"
+  },
+  "dependencies": {
+    "typescript": "^1.7.5",
+    "lru-cache": "^2.6.4",
+    "underscore": "^1.8.3",
+    "random-js": "^1.0.3"
+  },
+  "devDependencies": {
+    "mocha": "^2.2.5"
+  }
+}
