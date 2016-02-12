@@ -1,10 +1,10 @@
 'use strict';
 
-const ts = require("typescript");
-const _ = require("underscore");
+var ts = require("typescript");
+var _ = require("underscore");
 
 function getCompilerOptions(customOptions) {
-  let compilerOptions = ts.getDefaultCompilerOptions();
+  var compilerOptions = ts.getDefaultCompilerOptions();
 
   _.extend(compilerOptions, customOptions);
 
@@ -46,7 +46,7 @@ function getCompilerOptions(customOptions) {
 exports.getCompilerOptions = getCompilerOptions;
 
 // Default compiler options.
-function getDefaultOptions() {
+function getDefaultCompilerOptions() {
   return {
     module : ts.ModuleKind.None,
     target: ts.ScriptTarget.ES5,
@@ -61,4 +61,54 @@ function getDefaultOptions() {
   }
 }
 
-exports.getDefaultOptions = getDefaultOptions;
+exports.getDefaultCompilerOptions = getDefaultCompilerOptions;
+
+var customOptions = ['useCache'];
+function isCustomOption(option) {
+  return customOptions.indexOf(option) !== -1;
+}
+
+function validateCustomOptions(options) {
+  if ('useCache' in options) {
+    if (typeof options['useCache'] !== 'boolean') {
+      throw new Error('useCache should be boolean');
+    }
+  }
+}
+
+// Validate compiler options and convert them from 
+// user-friendly format to enum values used by TypeScript:
+// 'system' string converted to ts.ModuleKind.System value.
+function convertCompilerOptionsOrThrow(options) {
+  if (! options) return null;
+
+  var compilerOptions = _.clone(options);
+  var customOptions = {};
+  if (compilerOptions) {
+    for (var option in compilerOptions) {
+      if (isCustomOption(option)) {
+        customOptions[option] = compilerOptions[option];
+        delete compilerOptions[option];
+      }
+    }
+  }
+
+  var testOptions = {};
+  testOptions.compilerOptions = compilerOptions;
+  testOptions.files = [];
+  var result = ts.parseJsonConfigFileContent(testOptions);
+
+  if (result.errors && result.errors.length) {
+    throw new Error(result.errors[0].messageText);
+  }
+
+  validateCustomOptions(customOptions);
+
+  // Add converted compiler options plus custom options back.
+  compilerOptions = _.extend(
+    result.options, customOptions);
+
+  return compilerOptions;
+}
+
+exports.convertCompilerOptionsOrThrow = convertCompilerOptionsOrThrow;
