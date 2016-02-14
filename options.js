@@ -3,13 +3,10 @@
 var ts = require("typescript");
 var _ = require("underscore");
 
-function getCompilerOptions(customOptions) {
-  var compilerOptions = ts.getDefaultCompilerOptions();
+function presetCompilerOptions(customOptions) {
+  if (! customOptions) return;
 
-  _.extend(compilerOptions, customOptions);
-
-  // Support decorators by default.
-  compilerOptions.experimentalDecorators = true;
+  var compilerOptions = _.clone(customOptions);
 
   // Declaration files are expected to
   // be generated separately.
@@ -43,13 +40,13 @@ function getCompilerOptions(customOptions) {
   return compilerOptions;
 }
 
-exports.getCompilerOptions = getCompilerOptions;
+exports.presetCompilerOptions = presetCompilerOptions;
 
 // Default compiler options.
 function getDefaultCompilerOptions() {
   return {
-    module : ts.ModuleKind.None,
-    target: ts.ScriptTarget.ES5,
+    module : ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES3,
     sourceMap: true,
     noResolve: false,
     diagnostics: true,
@@ -57,7 +54,9 @@ function getDefaultCompilerOptions() {
     useCache: true,
     // Always emit class metadata,
     // especially useful for Angular2.
-    emitDecoratorMetadata: true
+    emitDecoratorMetadata: true,
+    // Support decorators by default.
+    experimentalDecorators: true
   }
 }
 

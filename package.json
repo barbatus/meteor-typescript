@@ -31,6 +31,6 @@
     "random-js": "^1.0.3"
   },
   "devDependencies": {
-    "mocha": "^2.2.5"
+    "jasmine-node": "^1.14.5"
   }
 }

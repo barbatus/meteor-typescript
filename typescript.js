@@ -2,12 +2,12 @@
 
 var assert = require("assert");
 var ts = require("typescript");
-var getCompilerOptions = require("./options").getCompilerOptions;
+var presetCompilerOptions = require("./options").presetCompilerOptions;
 var _ = require("underscore");
 var deepHash = require("./utils").deepHash;
 
 exports.compile = function compile(fileContent, options) {
-  var compilerOptions = getCompilerOptions(
+  var compilerOptions = presetCompilerOptions(
     options.compilerOptions);
 
   var filePath = options.filePath || deepHash(fileContent) + ".ts";
