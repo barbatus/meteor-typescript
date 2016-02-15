@@ -45,8 +45,8 @@ var validOptions = {
   "moduleName": "String",
   "typings": "Array"
 };
-var validOptionsMsg = "Valid options are" +
-  "compilerOptions, filePath, moduleName, and typings";
+var validOptionsMsg = "Valid options are " +
+  "compilerOptions, filePath, moduleName, and typings.";
 
 function checkType(option, optionName) {
   if (! option) return true;
@@ -61,7 +61,7 @@ function validateAndConvertOptions(options) {
   for (var option in options) {
     if (options.hasOwnProperty(option)) {
       if (validOptions[option] === undefined) {
-        throw new Error("Unknown option: " + option + "." +
+        throw new Error("Unknown option: " + option + ".\n" +
           validOptionsMsg);
       }
 
@@ -78,6 +78,8 @@ function validateAndConvertOptions(options) {
       options.compilerOptions);
   }
 }
+
+exports.validateAndConvertOptions = validateAndConvertOptions;
 
 exports.getDefaultOptions = function getDefaultOptions() {
   return {

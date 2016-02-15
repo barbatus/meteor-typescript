@@ -58,6 +58,17 @@ describe("meteor-typescript -> ", function() {
       };
       expect(test).toThrow();
     });
+
+    it("should validate options", function() {
+      var test = function() {
+        meteorTS.validateAndConvertOptions({
+          wrong: true
+        });
+      };
+
+      expect(test).toThrow(new Error("Unknown option: wrong.\n" +
+        "Valid options are compilerOptions, filePath, moduleName, and typings."));
+    });
   });
 
   describe("testing diagnostics and typings -> ", function() {

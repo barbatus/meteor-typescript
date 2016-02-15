@@ -1,7 +1,7 @@
 {
   "name": "meteor-typescript",
   "author": "@barbatus",
-  "version": "0.5.5",
+  "version": "0.5.7",
   "license": "MIT",
   "description": "TypeScript wrapper package for use with Meteor",
   "keywords": [
