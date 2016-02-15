@@ -40,13 +40,19 @@ exports.compile = function compile(source, options) {
 };
 
 var validOptions = {
-  "compilerOptions": "object",
-  "filePath": "string",
-  "moduleName": "string",
-  "typings": "array"
+  "compilerOptions": "Object",
+  "filePath": "String",
+  "moduleName": "String",
+  "typings": "Array"
 };
 var validOptionsMsg = "Valid options are" +
   "compilerOptions, filePath, moduleName, and typings";
+
+function checkType(option, optionName) {
+  if (! option) return true;
+
+  return option.constructor.name === validOptions[optionName];
+}
 
 function validateAndConvertOptions(options) {
   if (! options) return;
@@ -59,7 +65,7 @@ function validateAndConvertOptions(options) {
           validOptionsMsg);
       }
 
-      if (typeof options[option] !== validOptions[option]) {
+      if (! checkType(options[option], option)) {
         throw new Error(option + " should be of type " +
           validOptions[option]);
       }

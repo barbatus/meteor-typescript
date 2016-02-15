@@ -32,7 +32,7 @@ exports.compile = function compile(fileContent, options) {
   var compilerHost = _.extend({}, defaultHost, customHost);
   var fileNames = [filePath];
   if (options.typings) {
-    fileNames.concat(options.typings);
+    fileNames = fileNames.concat(options.typings);
   }
   var program = ts.createProgram(fileNames, compilerOptions, compilerHost);
 
