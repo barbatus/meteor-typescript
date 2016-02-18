@@ -18,15 +18,20 @@ function setCacheDir(cacheDir) {
 
 exports.setCacheDir = setCacheDir;
 
+function getConvertedDefault() {
+  return convertCompilerOptionsOrThrow(
+    getDefaultCompilerOptions());
+}
+
 var compileCache;
 exports.compile = function compile(source, options) {
   validateAndConvertOptions(options);
 
   if (! options)
-    options = {compilerOptions: getDefaultCompilerOptions()};
+    options = {compilerOptions: getConvertedDefault()};
 
   if (! options.compilerOptions) 
-    options.compilerOptions = getDefaultCompilerOptions();
+    options.compilerOptions = getConvertedDefault();
 
   if (options.compilerOptions.useCache) {
     return tsCompile(source, options);

@@ -43,10 +43,8 @@ exports.compile = function compile(fileContent, options) {
             normalizePath(filePath)) return;
 
       if (ts.fileExtensionIs(fileName, '.map')) {
-        var sourceMapPath = options.moduleName ?
-          options.moduleName : filePath;
         sourceMap = prepareSourceMap(outputCode,
-          fileContent, sourceMapPath);
+          fileContent, filePath);
       } else {
         code = outputCode;
       }

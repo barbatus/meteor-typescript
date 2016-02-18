@@ -7,7 +7,7 @@ describe("meteor-typescript -> ", function() {
 
     it("should compile with defaults", function() {
       var result = meteorTS.compile(testCodeLine);
-      expect(result.code.indexOf("exports.foo")).toEqual(0);
+      expect(result.code).toContain("exports.foo");
     });
 
     it("should throw on wrong option", function() {
@@ -89,6 +89,16 @@ describe("meteor-typescript -> ", function() {
       });
 
       expect(result.diagnostics.semanticErrors).not.toBeNull();
+      expect(result.diagnostics.semanticErrors.length).toEqual(0);
+    });
+  });
+
+  describe("testing module resolution -> ", function() {
+    var testCodeLine = "import {FakeApi} from 'lib/fake'";
+
+    it("should resolve NodeJS-way by default", function() {
+      var result = meteorTS.compile(testCodeLine);
+
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
   });

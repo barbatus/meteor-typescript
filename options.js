@@ -45,8 +45,9 @@ exports.presetCompilerOptions = presetCompilerOptions;
 // Default compiler options.
 function getDefaultCompilerOptions() {
   return {
-    module : "commonjs",
     target: "ES3",
+    module : "commonjs",
+    moduleResolution: "node",
     sourceMap: true,
     noResolve: false,
     diagnostics: true,
