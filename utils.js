@@ -1,3 +1,5 @@
+// Copied from https://github.com/meteor/babel/blob/master/util.js
+
 var fs = require("fs");
 var path = require("path");
 var createHash = require("crypto").createHash;

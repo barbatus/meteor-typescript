@@ -56,6 +56,7 @@ Cp.get = function(source, options) {
 
   if (! compileResult) {
     compileResult = this.compileFn(source, options);
+    compileResult.hash = cacheKey;
     this._cache.set(cacheKey, compileResult);
     this._writeCacheAsync(cacheKey, compileResult);
   }
