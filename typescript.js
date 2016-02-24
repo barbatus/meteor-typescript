@@ -14,12 +14,13 @@ exports.compile = function compile(fileContent, options) {
 
   var getFileContent = _.isFunction(fileContent) ? fileContent : null;
 
-  var optPath = options.filePath;
+  var optPath = options.filePath && ts.normalizeSlashes(options.filePath);
   var source = getFileContent ? getFileContent(optPath) : fileContent;
 
   optPath = optPath || deepHash(source) + ".ts";
   var sourceFile = ts.createSourceFile(optPath,
     source, compilerOptions.target);
+  filesMap.set(optPath, sourceFile);
   if (options.moduleName) {
     sourceFile.moduleName = options.moduleName;
   }
@@ -29,9 +30,7 @@ exports.compile = function compile(fileContent, options) {
   var customHost = {
     getSourceFile: function(filePath, target, onError) {
       // Skip reading the file content again, we have it already. 
-      if (filePath === ts.normalizeSlashes(optPath)) {
-        return sourceFile;
-      }
+      if (filePath === optPath) return sourceFile;
 
       if (getFileContent) {
         var content = getFileContent(filePath);
@@ -51,6 +50,9 @@ exports.compile = function compile(fileContent, options) {
       filesMap.set(filePath, file);
 
       return file;
+    },
+    getCurrentDirectory: function() {
+      return "";
     }
   };
 

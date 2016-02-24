@@ -116,6 +116,18 @@ describe("meteor-typescript -> ", function() {
 
       expect(result.code).toContain("exports.foo");
     });
+
+    it("should have compiled files cache", function() {
+      meteorTS.compile(testCodeLine, {
+        filePath: "foo1.ts"
+      });
+      // foo1.ts is empty, it should pick up already
+      // compiled one from internal cache.
+      var importCodeLine = "import {foo} from './foo1'";
+      var result = meteorTS.compile(importCodeLine);
+
+      expect(result.diagnostics.semanticErrors.length).toEqual(0);
+    });
   });
 
 });
