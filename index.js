@@ -24,7 +24,7 @@ function getConvertedDefault() {
 }
 
 var compileCache;
-exports.compile = function compile(source, options) {
+exports.compile = function compile(fileContent, options) {
   validateAndConvertOptions(options);
 
   if (! options)
@@ -34,14 +34,14 @@ exports.compile = function compile(source, options) {
     options.compilerOptions = getConvertedDefault();
 
   if (options.compilerOptions.useCache) {
-    return tsCompile(source, options);
+    return tsCompile(fileContent, options);
   }
 
   if (! compileCache) {
     setCacheDir();
   }
 
-  return compileCache.get(source, options);
+  return compileCache.get(fileContent, options);
 };
 
 var validOptions = {

@@ -6,13 +6,20 @@ var presetCompilerOptions = require("./options").presetCompilerOptions;
 var _ = require("underscore");
 var deepHash = require("./utils").deepHash;
 
+var filesMap = ts.createFileMap();
+
 exports.compile = function compile(fileContent, options) {
   var compilerOptions = presetCompilerOptions(
     options.compilerOptions);
 
-  var filePath = options.filePath || deepHash(fileContent) + ".ts";
-  var sourceFile = ts.createSourceFile(filePath,
-    fileContent, compilerOptions.target);
+  var getFileContent = _.isFunction(fileContent) ? fileContent : null;
+
+  var optPath = options.filePath;
+  var source = getFileContent ? getFileContent(optPath) : fileContent;
+
+  optPath = optPath || deepHash(source) + ".ts";
+  var sourceFile = ts.createSourceFile(optPath,
+    source, compilerOptions.target);
   if (options.moduleName) {
     sourceFile.moduleName = options.moduleName;
   }
@@ -20,17 +27,35 @@ exports.compile = function compile(fileContent, options) {
   var defaultHost = ts.createCompilerHost(compilerOptions);
 
   var customHost = {
-    getSourceFile: function(fileName, target) {
+    getSourceFile: function(filePath, target, onError) {
       // Skip reading the file content again, we have it already. 
-      if (fileName === ts.normalizeSlashes(filePath)) {
+      if (filePath === ts.normalizeSlashes(optPath)) {
         return sourceFile;
       }
-      return defaultHost.getSourceFile(fileName, target);
+
+      if (getFileContent) {
+        var content = getFileContent(filePath);
+        if (content) {
+          var file = ts.createSourceFile(filePath,
+            content, compilerOptions.target);
+          filesMap.set(filePath, file);
+          return file;
+        }
+      }
+
+      if (filesMap.contains(filePath)) {
+        return filesMap.get(filePath);
+      }
+
+      var file = defaultHost.getSourceFile(filePath, target, onError);
+      filesMap.set(filePath, file);
+
+      return file;
     }
   };
 
   var compilerHost = _.extend({}, defaultHost, customHost);
-  var fileNames = [filePath];
+  var fileNames = [optPath];
   if (options.typings) {
     fileNames = fileNames.concat(options.typings);
   }
@@ -40,11 +65,10 @@ exports.compile = function compile(fileContent, options) {
   var processResult =
     function(fileName, outputCode, writeByteOrderMark) {
       if (normalizePath(fileName) !==
-            normalizePath(filePath)) return;
+            normalizePath(optPath)) return;
 
       if (ts.fileExtensionIs(fileName, '.map')) {
-        sourceMap = prepareSourceMap(outputCode,
-          fileContent, filePath);
+        sourceMap = prepareSourceMap(outputCode, source, optPath);
       } else {
         code = outputCode;
       }
@@ -55,7 +79,7 @@ exports.compile = function compile(fileContent, options) {
     code: code,
     sourceMap: sourceMap,
     referencedPaths: getReferencedPaths(sourceFile),
-    diagnostics: readDiagnostics(program, filePath)
+    diagnostics: readDiagnostics(program, optPath)
   };
 }
 

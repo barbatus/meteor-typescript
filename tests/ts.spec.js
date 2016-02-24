@@ -103,4 +103,19 @@ describe("meteor-typescript -> ", function() {
     });
   });
 
+  describe("testing file content getter -> ", function() {
+    var testCodeLine = "export const foo = 'foo'";
+
+    it("should get file content using getter if provided", function() {
+      var getContent = function(filePath) {
+        return filePath === "foo.ts" ? testCodeLine : null;
+      };
+      var result = meteorTS.compile(getContent, {
+        filePath: "foo.ts"
+      });
+
+      expect(result.code).toContain("exports.foo");
+    });
+  });
+
 });
