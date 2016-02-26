@@ -2,86 +2,38 @@
 
 var assert = require("assert");
 var ts = require("typescript");
-var presetCompilerOptions = require("./options").presetCompilerOptions;
 var _ = require("underscore");
-var deepHash = require("./utils").deepHash;
-
-var filesMap = ts.createFileMap();
+var CompilerHost = require("./compiler-host").CompilerHost;
 
 exports.compile = function compile(fileContent, options) {
-  var compilerOptions = presetCompilerOptions(
-    options.compilerOptions);
+  var chost = new CompilerHost(fileContent, options);
+  var mainFilePath = chost.getFilePath();
+  var sourceFile = chost.getMainSourceFile();
+  var source = chost.getFileSource();
+  var rootFiles = chost.getRootFileNames();
+  var compilerOptions = chost.getCompilerOptions();
 
-  var getFileContent = _.isFunction(fileContent) ? fileContent : null;
-
-  var optPath = options.filePath && ts.normalizeSlashes(options.filePath);
-  var source = getFileContent ? getFileContent(optPath) : fileContent;
-
-  optPath = optPath || deepHash(source) + ".ts";
-  var sourceFile = ts.createSourceFile(optPath,
-    source, compilerOptions.target);
-  filesMap.set(optPath, sourceFile);
-  if (options.moduleName) {
-    sourceFile.moduleName = options.moduleName;
-  }
-
-  var defaultHost = ts.createCompilerHost(compilerOptions);
-
-  var customHost = {
-    getSourceFile: function(filePath, target, onError) {
-      // Skip reading the file content again, we have it already. 
-      if (filePath === optPath) return sourceFile;
-
-      if (getFileContent) {
-        var content = getFileContent(filePath);
-        if (content) {
-          var file = ts.createSourceFile(filePath,
-            content, compilerOptions.target);
-          filesMap.set(filePath, file);
-          return file;
-        }
-      }
-
-      if (filesMap.contains(filePath)) {
-        return filesMap.get(filePath);
-      }
-
-      var file = defaultHost.getSourceFile(filePath, target, onError);
-      filesMap.set(filePath, file);
-
-      return file;
-    },
-    getCurrentDirectory: function() {
-      return "";
-    }
-  };
-
-  var compilerHost = _.extend({}, defaultHost, customHost);
-  var fileNames = [optPath];
-  if (options.typings) {
-    fileNames = fileNames.concat(options.typings);
-  }
-  var program = ts.createProgram(fileNames, compilerOptions, compilerHost);
+  var program = ts.createProgram(rootFiles, compilerOptions, chost);
 
   var code, sourceMap;
   var processResult =
-    function(fileName, outputCode, writeByteOrderMark) {
-      if (normalizePath(fileName) !==
-            normalizePath(optPath)) return;
+    function(filePath, outputCode, writeByteOrderMark) {
+      if (normalizePath(filePath) !==
+            normalizePath(mainFilePath)) return;
 
-      if (ts.fileExtensionIs(fileName, '.map')) {
-        sourceMap = prepareSourceMap(outputCode, source, optPath);
+      if (ts.fileExtensionIs(filePath, '.map')) {
+        sourceMap = prepareSourceMap(outputCode, source, mainFilePath);
       } else {
         code = outputCode;
       }
     }
   program.emit(sourceFile, processResult);
 
-  return { 
+  return {
     code: code,
     sourceMap: sourceMap,
     referencedPaths: getReferencedPaths(sourceFile),
-    diagnostics: readDiagnostics(program, optPath)
+    diagnostics: readDiagnostics(program, mainFilePath)
   };
 }
 
@@ -149,7 +101,7 @@ function flattenDiagnostics(tsDiagnostics) {
   var dLen = tsDiagnostics.length;
   for (var i = 0; i < dLen; i++) {
     var diagnostic = tsDiagnostics[i];
-    if (!diagnostic.file) continue;
+    if (! diagnostic.file) continue;
 
     var pos = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
     var message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');

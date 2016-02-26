@@ -48,7 +48,8 @@ var validOptions = {
   "compilerOptions": "Object",
   "filePath": "String",
   "moduleName": "String",
-  "typings": "Array"
+  "typings": "Array",
+  "arch": "String"
 };
 var validOptionsMsg = "Valid options are " +
   "compilerOptions, filePath, moduleName, and typings.";
