@@ -29,11 +29,9 @@ function ensureCacheDir(cacheDir) {
   return cacheDir;
 }
 
-function Cache(compileFn, cacheDir) {
+function Cache(cacheDir) {
   assert.ok(this instanceof Cache);
-  assert.strictEqual(typeof compileFn, "function");
 
-  this.compileFn = compileFn;
   this.cacheDir = ensureCacheDir(cacheDir);
 
   var maxSize = process.env.TYPESCRIPT_CACHE_SIZE;
@@ -46,7 +44,9 @@ exports.Cache = Cache;
 
 var Cp = Cache.prototype;
 
-Cp.get = function(source, options) {
+Cp.get = function(source, options, compileFn) {
+  assert.strictEqual(typeof compileFn, "function");
+
   var cacheKey = utils.deepHash(pkgVersion, source, options);
   var compileResult = this._cache.get(cacheKey);
 
@@ -55,7 +55,7 @@ Cp.get = function(source, options) {
   }
 
   if (! compileResult) {
-    compileResult = this.compileFn(source, options);
+    compileResult = compileFn();
     compileResult.hash = cacheKey;
     this._cache.set(cacheKey, compileResult);
     this._writeCacheAsync(cacheKey, compileResult);

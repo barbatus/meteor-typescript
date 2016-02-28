@@ -3,10 +3,8 @@
 var assert = require("assert");
 var ts = require("typescript");
 var _ = require("underscore");
-var CompilerHost = require("./compiler-host").CompilerHost;
 
-exports.compile = function compile(fileContent, options) {
-  var chost = new CompilerHost(fileContent, options);
+exports.compile = function compile(chost) {
   var mainFilePath = chost.getFilePath();
   var sourceFile = chost.getMainSourceFile();
   var source = chost.getFileSource();

@@ -3,6 +3,7 @@
 var getDefaultCompilerOptions = require("./options").getDefaultCompilerOptions;
 var convertCompilerOptionsOrThrow = require("./options").convertCompilerOptionsOrThrow;
 var tsCompile = require("./typescript").compile;
+var CompilerHost = require("./compiler-host").CompilerHost;
 var Cache = require("./cache").Cache;
 var _ = require("underscore");
 
@@ -11,9 +12,7 @@ function setCacheDir(cacheDir) {
     return;
   }
 
-  compileCache = new Cache(function(source, options) {
-    return tsCompile(source, options);
-  }, cacheDir);
+  compileCache = new Cache(cacheDir);
 };
 
 exports.setCacheDir = setCacheDir;
@@ -33,15 +32,19 @@ exports.compile = function compile(fileContent, options) {
   if (! options.compilerOptions) 
     options.compilerOptions = getConvertedDefault();
 
+  var chost = new CompilerHost(fileContent, options);
   if (options.compilerOptions.useCache) {
-    return tsCompile(fileContent, options);
+    return tsCompile(chost);
   }
 
   if (! compileCache) {
     setCacheDir();
   }
 
-  return compileCache.get(fileContent, options);
+  var source = chost.getFileSource();
+  return compileCache.get(source, options, function() {
+    return tsCompile(chost);
+  });
 };
 
 var validOptions = {

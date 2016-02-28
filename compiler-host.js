@@ -43,7 +43,6 @@ CP.getFilePath = function() {
 CP.getFileSource = function() {
   if (! this.source) {
     var filePath = this.options.filePath;
-    filePath = filePath && ts.normalizeSlashes(filePath);
     this.source = this.getFileContent ?
       this.getFileContent(filePath) : this.fileContent;
   }
