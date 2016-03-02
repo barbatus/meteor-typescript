@@ -50,7 +50,6 @@ function lazyInit() {
 
 function TSBuild(filePaths, getFileContent, options) {
   validateAndConvertOptions(options);
-  this.options = options;
 
   lazyInit();
 
@@ -59,6 +58,8 @@ function TSBuild(filePaths, getFileContent, options) {
 
   if (! options.compilerOptions) 
     options.compilerOptions = getConvertedDefault();
+
+  this.options = options;
 
   sourceHost.setSource(getFileContent);
 
