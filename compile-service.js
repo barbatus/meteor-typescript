@@ -1,39 +1,71 @@
-'use strict';
+"use strict";
 
 var assert = require("assert");
 var ts = require("typescript");
 var _ = require("underscore");
+var sourceHost = require("./files-source-host").sourceHost;
 
-exports.compile = function compile(chost) {
-  var mainFilePath = chost.getFilePath();
-  var sourceFile = chost.getMainSourceFile();
-  var source = chost.getFileSource();
-  var rootFiles = chost.getRootFileNames();
-  var compilerOptions = chost.getCompilerOptions();
+function CompileService(serviceHost, docRegistry) {
+  this.serviceHost = serviceHost;
+  this.registry = docRegistry;
+  this.service = ts.createLanguageService(serviceHost, docRegistry);
+}
 
-  var program = ts.createProgram(rootFiles, compilerOptions, chost);
+exports.CompileService = CompileService;
+
+var CP = CompileService.prototype;
+
+CP.compile = function(filePath, moduleName) {
+  var sourceFile = this.getSourceFile(filePath);
+  if (moduleName) {
+    sourceFile.moduleName = moduleName;
+  }
+
+  var result = this.service.getEmitOutput(filePath);
+
+  // Parse diagnostics.
+  var syntactic = flattenDiagnostics(
+    this.service.getSyntacticDiagnostics(filePath));
+  var semantic = flattenDiagnostics(
+    this.service.getSemanticDiagnostics(filePath));
+  var diagnostics = {
+    syntacticErrors: syntactic,
+    semanticErrors: semantic
+  };
 
   var code, sourceMap;
-  var processResult =
-    function(filePath, outputCode, writeByteOrderMark) {
-      if (normalizePath(filePath) !==
-            normalizePath(mainFilePath)) return;
+  _.each(result.outputFiles, function(file) {
+    if (normalizePath(filePath) !==
+          normalizePath(file.name)) return;
 
-      if (ts.fileExtensionIs(filePath, '.map')) {
-        sourceMap = prepareSourceMap(outputCode, source, mainFilePath);
-      } else {
-        code = outputCode;
-      }
+    if (ts.fileExtensionIs(file.name, '.map')) {
+      var source = sourceHost.get(filePath);
+      sourceMap = prepareSourceMap(file.text, source, filePath);
+    } else {
+      code = file.text;
     }
-  program.emit(sourceFile, processResult);
+  }, this);
 
   return {
     code: code,
+    version: this.serviceHost.getScriptVersion(filePath),
     sourceMap: sourceMap,
     referencedPaths: getReferencedPaths(sourceFile),
-    diagnostics: readDiagnostics(program, mainFilePath)
+    diagnostics: diagnostics
   };
-}
+};
+
+CP.getSourceFile = function(filePath) {
+  var options = this.serviceHost.getCompilationSettings();
+  var script = this.serviceHost.getScriptSnapshot(filePath);
+  var version = this.serviceHost.getScriptVersion(filePath);
+  // TODO: add ts.ScriptKind?
+  var sourceFile = this.registry.acquireDocument(
+    filePath, options, script, version);
+  return sourceFile;
+};
+
+// HELPERS
 
 // 1) Normalizes slashes in the file path
 // 2) Removes file extension
@@ -74,23 +106,6 @@ function getReferencedPaths(sourceFile) {
   }
 
   return referencedPaths;
-}
-
-function readDiagnostics(program, filePath) {
-  var sourceFile;
-  if (filePath) {
-    sourceFile = program.getSourceFile(filePath);
-  }
-
-  var syntactic = flattenDiagnostics(
-    program.getSyntacticDiagnostics(sourceFile));
-  var semantic =  flattenDiagnostics(
-    program.getSemanticDiagnostics(sourceFile));
-
-  return {
-    syntacticErrors: syntactic,
-    semanticErrors: semantic
-  };
 }
 
 function flattenDiagnostics(tsDiagnostics) {

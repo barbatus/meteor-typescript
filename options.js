@@ -51,8 +51,6 @@ function getDefaultCompilerOptions() {
     sourceMap: true,
     noResolve: false,
     diagnostics: true,
-    // Custom option to turn on/off cache.
-    useCache: true,
     // Always emit class metadata,
     // especially useful for Angular2.
     emitDecoratorMetadata: true,
@@ -63,38 +61,14 @@ function getDefaultCompilerOptions() {
 
 exports.getDefaultCompilerOptions = getDefaultCompilerOptions;
 
-var customOptions = ['useCache'];
-function isCustomOption(option) {
-  return customOptions.indexOf(option) !== -1;
-}
-
-function validateCustomOptions(options) {
-  if ('useCache' in options) {
-    if (typeof options['useCache'] !== 'boolean') {
-      throw new Error('useCache should be boolean');
-    }
-  }
-}
-
 // Validate compiler options and convert them from 
-// user-friendly format to enum values used by TypeScript:
+// user-friendly format to enum values used by TypeScript, e.g.:
 // 'system' string converted to ts.ModuleKind.System value.
 function convertCompilerOptionsOrThrow(options) {
   if (! options) return null;
 
-  var compilerOptions = _.clone(options);
-  var customOptions = {};
-  if (compilerOptions) {
-    for (var option in compilerOptions) {
-      if (isCustomOption(option)) {
-        customOptions[option] = compilerOptions[option];
-        delete compilerOptions[option];
-      }
-    }
-  }
-
   var testOptions = {};
-  testOptions.compilerOptions = compilerOptions;
+  testOptions.compilerOptions = options;
   testOptions.files = [];
   var result = ts.parseJsonConfigFileContent(testOptions);
 
@@ -102,13 +76,7 @@ function convertCompilerOptionsOrThrow(options) {
     throw new Error(result.errors[0].messageText);
   }
 
-  validateCustomOptions(customOptions);
-
-  // Add converted compiler options plus custom options back.
-  compilerOptions = _.extend(
-    result.options, customOptions);
-
-  return compilerOptions;
+  return result.options;
 }
 
 exports.convertCompilerOptionsOrThrow = convertCompilerOptionsOrThrow;

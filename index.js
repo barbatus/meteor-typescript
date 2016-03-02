@@ -1,9 +1,12 @@
-'use strict';
+"use strict";
 
+var ts = require("typescript");
 var getDefaultCompilerOptions = require("./options").getDefaultCompilerOptions;
 var convertCompilerOptionsOrThrow = require("./options").convertCompilerOptionsOrThrow;
-var tsCompile = require("./typescript").compile;
-var CompilerHost = require("./compiler-host").CompilerHost;
+var CompileService = require("./compile-service").CompileService;
+var ServiceHost = require("./compile-service-host").CompileServiceHost;
+var sourceHost = require("./files-source-host").sourceHost;
+var deepHash = require("./utils").deepHash;
 var Cache = require("./cache").Cache;
 var _ = require("underscore");
 
@@ -23,8 +26,33 @@ function getConvertedDefault() {
 }
 
 var compileCache;
-exports.compile = function compile(fileContent, options) {
+var serviceHost;
+var compileService;
+var docRegistry;
+
+function lazyInit() {
+  if (! compileCache) {
+    setCacheDir();
+  }
+
+  if (! docRegistry) {
+    docRegistry = ts.createDocumentRegistry();
+  }
+
+  if (! serviceHost) {
+    serviceHost = new ServiceHost(compileCache);
+  }
+
+  if (! compileService) {
+    compileService = new CompileService(serviceHost, docRegistry);
+  }
+}
+
+function TSBuild(filePaths, getFileContent, options) {
   validateAndConvertOptions(options);
+  this.options = options;
+
+  lazyInit();
 
   if (! options)
     options = {compilerOptions: getConvertedDefault()};
@@ -32,19 +60,45 @@ exports.compile = function compile(fileContent, options) {
   if (! options.compilerOptions) 
     options.compilerOptions = getConvertedDefault();
 
-  var chost = new CompilerHost(fileContent, options);
-  if (options.compilerOptions.useCache) {
-    return tsCompile(chost);
+  sourceHost.setSource(getFileContent);
+
+  serviceHost.setFiles(filePaths, options);
+}
+
+exports.TSBuild = TSBuild;
+
+var BP = TSBuild.prototype;
+
+BP.emit = function(filePath, moduleName) {
+  var options = this.options;
+  var useCache = options && options.useCache;
+
+  if (useCache === false) {
+    return compileService.compile(filePath, moduleName);
   }
 
-  if (! compileCache) {
-    setCacheDir();
-  }
-
-  var source = chost.getFileSource();
-  return compileCache.get(source, options, function() {
-    return tsCompile(chost);
+  return compileCache.get(filePath, options, function() {
+    return compileService.compile(filePath, moduleName);
   });
+};
+
+exports.compile = function compile(fileContent, options) {
+  if (typeof fileContent !== "string") {
+    throw new Error("fileContent should be a string");
+  }
+
+  var optPath = options && options.filePath;
+  var moduleName = options && options.moduleName;
+
+  var optPath = optPath ? optPath : deepHash(fileContent, options) + ".ts";
+  var getFileContent = function(filePath) {
+    if (filePath === optPath) {
+      return fileContent;
+    }
+  }
+
+  var newBuild = new TSBuild([optPath], getFileContent, options);
+  return newBuild.emit(optPath, moduleName);
 };
 
 var validOptions = {
@@ -52,7 +106,8 @@ var validOptions = {
   "filePath": "String",
   "moduleName": "String",
   "typings": "Array",
-  "arch": "String"
+  "arch": "String",
+  "useCache": "Boolean"
 };
 var validOptionsMsg = "Valid options are " +
   "compilerOptions, filePath, moduleName, and typings.";

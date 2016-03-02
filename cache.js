@@ -7,6 +7,7 @@ var LRU = require("lru-cache");
 var utils = require("./utils");
 var pkgVersion = require("./package.json").version;
 var random = require("random-js")();
+var sourceHost = require("./files-source-host").sourceHost;
 
 function ensureCacheDir(cacheDir) {
   cacheDir = path.resolve(
@@ -44,9 +45,10 @@ exports.Cache = Cache;
 
 var Cp = Cache.prototype;
 
-Cp.get = function(source, options, compileFn) {
+Cp.get = function(filePath, options, compileFn) {
   assert.strictEqual(typeof compileFn, "function");
 
+  var source = sourceHost.get(filePath);
   var cacheKey = utils.deepHash(pkgVersion, source, options);
   var compileResult = this._cache.get(cacheKey);
 
@@ -62,7 +64,19 @@ Cp.get = function(source, options, compileFn) {
   }
 
   return compileResult;
-}
+};
+
+Cp.fileChanged = function(filePath, options) {
+  var source = sourceHost.get(filePath);
+  var cacheKey = utils.deepHash(pkgVersion, source, options);
+  var compileResult = this._cache.get(cacheKey);
+
+  if (! compileResult) {
+    compileResult = this._readCache(cacheKey);
+  }
+
+  return ! compileResult;
+};
 
 Cp._cacheFilename = function(cacheKey) {
   // We want cacheKeys to be hex so that they work on any FS

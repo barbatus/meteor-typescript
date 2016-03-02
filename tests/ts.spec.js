@@ -1,12 +1,18 @@
 var meteorTS = require("../index");
+var TSBuild = require("../index").TSBuild;
 
 describe("meteor-typescript -> ", function() {
+  function getOptions(options) {
+    if (! options) options = {};
+    options.useCache = false;
+    return options;
+  }
 
   describe("testing exports and options -> ", function() {
     var testCodeLine = "export const foo = 'foo'";
 
     it("should compile with defaults", function() {
-      var result = meteorTS.compile(testCodeLine);
+      var result = meteorTS.compile(testCodeLine, getOptions());
       expect(result.code).toContain("exports.foo");
     });
 
@@ -20,41 +26,40 @@ describe("meteor-typescript -> ", function() {
     });
 
     it("should allow null options", function() {
-      var result = meteorTS.compile(testCodeLine, {
+      var result = meteorTS.compile(testCodeLine, getOptions({
         compilerOptions: null,
         typings: undefined
-      });
+      }));
       expect(result.code).not.toBeNull();
     });
 
     it("should recognize preset options", function() {
-      var result = meteorTS.compile(testCodeLine, {
+      var result = meteorTS.compile(testCodeLine, getOptions({
         compilerOptions: {
           module: "system"
         }
-      });
+      }));
       expect(result.code).toContain("System.register");
     });
 
-    it("should add module with moduleName name when moduleName is set",
-      function() {
-        var result = meteorTS.compile(testCodeLine, {
+    it("should add module with moduleName name when moduleName is set", function() {
+        var result = meteorTS.compile(testCodeLine, getOptions({
           compilerOptions: {
             module: "system"
           },
           moduleName: "fooModule"
-        });
+        }));
         expect(result.code.indexOf("System.register(\"fooModule\""))
           .toEqual(0);
-      });
+    });
 
     it("should throw on wrong compiler option", function() {
       var test = function() {
-          meteorTS.compile(testCodeLine, {
+          meteorTS.compile(testCodeLine, getOptions({
             compilerOptions: {
             module: "wrong"
           }
-        });
+        }));
       };
       expect(test).toThrow();
     });
@@ -75,7 +80,7 @@ describe("meteor-typescript -> ", function() {
     var codeLineWithImport = "import {api} from 'lib'; export const foo = 'foo'";
 
     it("should contain a semantic error when some module undefined", function() {
-      var result = meteorTS.compile(codeLineWithImport);
+      var result = meteorTS.compile(codeLineWithImport, getOptions());
 
       expect(result.diagnostics.semanticErrors).not.toBeNull();
       expect(result.diagnostics.semanticErrors.length).toEqual(1);
@@ -84,26 +89,26 @@ describe("meteor-typescript -> ", function() {
     });
 
     it("declaration file with module declaration should remove an error", function() {
-      var result = meteorTS.compile(codeLineWithImport, {
+      var result = meteorTS.compile(codeLineWithImport, getOptions({
         typings: ["typings/lib.d.ts"]
-      });
+      }));
 
       expect(result.diagnostics.semanticErrors).not.toBeNull();
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
 
     it("should always include lib.core.d.ts", function() {
-      var codeLine = "new Object()";
-      var result = meteorTS.compile(codeLine);
+      var codeLine = "new Object();";
+      var result = meteorTS.compile(codeLine, getOptions());
 
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
 
     it("should not include lib.dom.d.ts when target arch not web", function() {
       var codeLine = "new Window()";
-      var result = meteorTS.compile(codeLine, {
+      var result = meteorTS.compile(codeLine, getOptions({
         arch: "os"
-      });
+      }));
 
       expect(result.diagnostics.semanticErrors.length).toEqual(1);
     });
@@ -113,36 +118,63 @@ describe("meteor-typescript -> ", function() {
     var testCodeLine = "import {FakeApi} from 'lib/fake'";
 
     it("should resolve NodeJS-way by default", function() {
-      var result = meteorTS.compile(testCodeLine);
+      var result = meteorTS.compile(testCodeLine, getOptions());
 
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
   });
 
-  describe("testing file content getter -> ", function() {
+  describe("testing incremental build -> ", function() {
     var testCodeLine = "export const foo = 'foo'";
 
-    it("should get file content using getter if provided", function() {
-      var getContent = function(filePath) {
-        return filePath === "foo.ts" ? testCodeLine : null;
-      };
-      var result = meteorTS.compile(getContent, {
-        filePath: "foo.ts"
-      });
-
+    it("should compile with defaults", function() {
+      var build = new TSBuild(["foo.ts"], function(filePath) {
+        if (filePath === "foo.ts") return testCodeLine;
+      }, getOptions());
+      var result = build.emit("foo.ts");
       expect(result.code).toContain("exports.foo");
     });
 
-    it("should have compiled files cache", function() {
-      meteorTS.compile(testCodeLine, {
-        filePath: "foo1.ts"
-      });
-      // foo1.ts is empty, it should pick up already
-      // compiled one from internal cache.
+    it("should access local dependency using provided content getter", function() {
       var importCodeLine = "import {foo} from './foo1'";
-      var result = meteorTS.compile(importCodeLine);
+
+      var build = new TSBuild(["foo1.ts", "foo2.ts"], function(filePath) {
+        if (filePath === "foo1.ts") return testCodeLine;
+        if (filePath === "foo2.ts") return importCodeLine;
+      }, getOptions());
+
+      var result = build.emit("foo2.ts");
 
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
+    });
+
+    it("file version should grow when file is changed", function() {
+      var changedCode = "export const foo = 'foo1'";
+
+      var build1 = new TSBuild(["foo3.ts"], function(filePath) {
+        if (filePath === "foo3.ts") return testCodeLine;
+      }, getOptions());
+
+      var result1 = build1.emit("foo3.ts");
+
+      var build2 = new TSBuild(["foo3.ts"], function(filePath) {
+        if (filePath === "foo3.ts") return changedCode;
+      }, getOptions());
+
+      var result2 = build2.emit("foo3.ts");
+
+      expect(result1.version).toEqual("1");
+      expect(result2.version).toEqual("2");
+    });
+
+    it("file version should remain the same if file is not changed", function() {
+      var build = new TSBuild(["foo4.ts"], function(filePath) {
+        if (filePath === "foo4.ts") return testCodeLine;
+      });
+      var result1 = build.emit("foo4.ts");
+      var result2 = build.emit("foo4.ts");
+
+      expect(result1.version).toEqual(result2.version);
     });
   });
 });

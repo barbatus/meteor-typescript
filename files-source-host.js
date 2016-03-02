@@ -1,0 +1,38 @@
+"use strict";
+
+var ts = require("typescript");
+
+var filesMap = ts.createFileMap();
+
+function SourceHost() {}
+
+var SH = SourceHost.prototype;
+
+SH.setSource = function(fileSource) {
+  this.fileSource = fileSource;
+};
+
+SH.get = function(filePath) {
+  if (this.fileSource) {
+    var source = this.fileSource(filePath);
+    if (source) return source;
+  }
+
+  if (filesMap.contains(filePath)) {
+    return filesMap.get(filePath);
+  }
+
+  return null;
+};
+
+var execPath = ts.sys.getExecutingFilePath();
+var npmPath = ts.combinePaths(ts.getDirectoryPath(
+  ts.normalizePath(execPath)),  "../../../");
+
+SH.loadSourceFile = function(filePath) {
+  var content = ts.sys.readFile(npmPath + filePath, "utf-8");
+  var sourceFile = ts.createSourceFile(filePath, content);
+  filesMap.set(filePath, sourceFile);
+};
+
+exports.sourceHost = new SourceHost();
