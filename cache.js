@@ -30,10 +30,8 @@ function ensureCacheDir(cacheDir) {
   return cacheDir;
 }
 
-function Cache(cacheDir) {
+function Cache() {
   assert.ok(this instanceof Cache);
-
-  this.cacheDir = ensureCacheDir(cacheDir);
 
   var maxSize = process.env.TYPESCRIPT_CACHE_SIZE;
   this._cache = new LRU({
@@ -45,37 +43,19 @@ exports.Cache = Cache;
 
 var Cp = Cache.prototype;
 
-Cp.get = function(filePath, options, compileFn) {
-  assert.strictEqual(typeof compileFn, "function");
+Cp._get = function(cacheKey) {
+  var result = this._cache.get(cacheKey);
 
-  var source = sourceHost.get(filePath);
-  var cacheKey = utils.deepHash(pkgVersion, source, options);
-  var compileResult = this._cache.get(cacheKey);
-
-  if (! compileResult) {
-    compileResult = this._readCache(cacheKey);
+  if (! result) {
+    result = this._readCache(cacheKey);
   }
 
-  if (! compileResult) {
-    compileResult = compileFn();
-    compileResult.hash = cacheKey;
-    this._cache.set(cacheKey, compileResult);
-    this._writeCacheAsync(cacheKey, compileResult);
-  }
-
-  return compileResult;
+  return result; 
 };
 
-Cp.fileChanged = function(filePath, options) {
-  var source = sourceHost.get(filePath);
-  var cacheKey = utils.deepHash(pkgVersion, source, options);
-  var compileResult = this._cache.get(cacheKey);
-
-  if (! compileResult) {
-    compileResult = this._readCache(cacheKey);
-  }
-
-  return ! compileResult;
+Cp._save = function(cacheKey, result) {
+  this._cache.set(cacheKey, result);
+  this._writeCacheAsync(cacheKey, result);
 };
 
 Cp._cacheFilename = function(cacheKey) {
@@ -152,3 +132,69 @@ Cp._writeCacheAsync = function(cacheKey, compileResult) {
   var cacheContents = JSON.stringify(compileResult);
   this._writeFileAsync(cacheFilename, cacheContents);
 }
+
+
+function CompileCache(cacheDir) {
+  Cache.apply(this);
+  this.cacheDir = ensureCacheDir(cacheDir);
+}
+
+var CCp = CompileCache.prototype = new Cache();
+
+CCp.get = function(filePath, options, compileFn, force) {
+  var source = sourceHost.get(filePath);
+  var cacheKey = utils.deepHash(pkgVersion, source, options);
+  var compileResult = this._get(cacheKey);
+
+  if (! compileResult || force === true) {
+    compileResult = compileFn();
+    compileResult.hash = cacheKey;
+    this._save(cacheKey, compileResult);
+  }
+
+  return compileResult;
+};
+
+Cp.resultChanged = function(filePath, options) {
+  var source = sourceHost.get(filePath);
+  var cacheKey = utils.deepHash(pkgVersion, source, options);
+  var compileResult = this._cache.get(cacheKey);
+
+  if (! compileResult) {
+    compileResult = this._readCache(cacheKey);
+  }
+
+  return ! compileResult;
+};
+
+exports.CompileCache = CompileCache;
+
+function FileCache(cacheDir) {
+  Cache.apply(this);
+  this.cacheDir = ensureCacheDir(cacheDir);
+}
+
+FileCache.prototype = new Cache();
+
+exports.FileCache = FileCache;
+
+var FCp = FileCache.prototype = new Cache();
+
+FCp.save = function(filePath, content) {
+  var content = content === undefined ?
+    sourceHost.get(filePath) : content;
+
+  var cacheKey = utils.deepHash(filePath);
+  var contentHash = utils.deepHash(content);
+  this._save(cacheKey, contentHash);
+};
+
+FCp.isChanged = function(filePath, content) {
+  var content = content === undefined ?
+    sourceHost.get(filePath) : content;
+  if (! content) return true;
+  
+  var cacheKey = utils.deepHash(filePath);
+  var contentHash = utils.deepHash(content);
+  return this._get(cacheKey) != contentHash;
+};

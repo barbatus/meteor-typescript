@@ -74,6 +74,16 @@ describe("meteor-typescript -> ", function() {
       expect(test).toThrow(new Error("Unknown option: wrong.\n" +
         "Valid options are compilerOptions, filePath, moduleName, and typings."));
     });
+
+    it("should have isExternal to be true if ES6 modules are used and " +
+        "false in case of internal modules", function() {
+      var result = meteorTS.compile(testCodeLine, getOptions());
+      expect(result.isExternal).toEqual(true);
+
+      var codeLine = "module foo { export var fooVar = \'fooVar\'}";
+      var result = meteorTS.compile(codeLine, getOptions());
+      expect(result.isExternal).toEqual(false);
+    });
   });
 
   describe("testing diagnostics and typings -> ", function() {
@@ -175,6 +185,79 @@ describe("meteor-typescript -> ", function() {
       var result2 = build.emit("foo4.ts");
 
       expect(result1.version).toEqual(result2.version);
+    });
+
+    it("should update diagnostics when file's module dependency has changed", function() {
+      var importCodeLine = "import {foo} from './foo5'";
+
+      var build1 = new TSBuild(["foo5.ts", "foo6.ts"], function(filePath) {
+        if (filePath === "foo5.ts") return testCodeLine;
+        if (filePath === "foo6.ts") return importCodeLine;
+      });
+
+      var result1 = build1.emit("foo6.ts");
+
+      expect(result1.diagnostics.semanticErrors.length).toEqual(0);
+      expect(result1.references.modules).toEqual(['foo5.ts']);
+
+      var changedCode = "export const foo1 = 'foo'";
+      var build2 = new TSBuild(["foo5.ts", "foo6.ts"], function(filePath) {
+        if (filePath === "foo5.ts") return changedCode;
+        if (filePath === "foo6.ts") return importCodeLine;
+      });
+
+      var result2 = build2.emit("foo6.ts");
+
+      expect(result2.diagnostics.semanticErrors.length).toEqual(1);
+    });
+
+    it("should update diagnostics when typings has changed", function() {
+      var foo7 = "declare module 'foo7' { export var foo = 'foo' }";
+      var foo8 = "import {foo} from 'foo7'";
+
+      var build1 = new TSBuild(["foo8.ts", "foo7.d.ts"], function(filePath) {
+        if (filePath === "foo7.d.ts") return foo7;
+        if (filePath === "foo8.ts") return foo8;
+      });
+
+      var result1 = build1.emit("foo8.ts");
+
+      expect(result1.diagnostics.semanticErrors.length).toEqual(0);
+
+      var newTypigns = "declare module 'foo7' { export var foo1 = 'foo' }";
+      var build2 = new TSBuild(["foo7.d.ts", "foo8.ts"], function(filePath) {
+        if (filePath === "foo7.d.ts") return newTypigns;
+        if (filePath === "foo8.ts") return foo8;
+      });
+
+      var result2 = build2.emit("foo8.ts");
+
+      expect(result2.diagnostics.semanticErrors.length).toEqual(1);
+    });
+
+    it("should update diagnostics when file's references has changed", function() {
+      var foo9 = "module foo9 { export var foo = 'foo' }";
+      var foo10 = "/// <reference path='foo9.ts'> \n" +
+                  "module foo10 { export var foo = foo9.foo }";
+
+      var build1 = new TSBuild(["foo9.ts", "foo10.ts"], function(filePath) {
+        if (filePath === "foo9.ts") return foo9;
+        if (filePath === "foo10.ts") return foo10;
+      });
+
+      var result1 = build1.emit("foo10.ts");
+
+      expect(result1.diagnostics.semanticErrors.length).toEqual(0);
+
+      var changed = "module foo9 { export var foo1 = 'foo' }";
+      var build2 = new TSBuild(["foo9.ts", "foo10.ts"], function(filePath) {
+        if (filePath === "foo9.ts") return changed;
+        if (filePath === "foo10.ts") return foo10;
+      });
+
+      var result2 = build2.emit("foo10.ts");
+
+      expect(result2.diagnostics.semanticErrors.length).toEqual(1);
     });
   });
 });

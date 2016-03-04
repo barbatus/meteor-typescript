@@ -4,9 +4,11 @@ var ts = require("typescript");
 var deepHash = require("./utils").deepHash;
 var _ = require("underscore");
 var sourceHost = require("./files-source-host").sourceHost;
+var tsu = require("./ts-utils").ts;
 
-function CompileServiceHost(compileCache) {
+function CompileServiceHost(compileCache, typingsCache) {
   this.compileCache = compileCache;
+  this.typingsCache = typingsCache;
 
   this.files = {};
   this.webArchExp = new RegExp("^web\.");
@@ -25,7 +27,14 @@ SH.setFiles = function(filePaths, options) {
       return;
     }
 
-    if (this.compileCache.fileChanged(filePath, options)) {
+    if (tsu.isTypings(filePath)) {
+      if (this.typingsCache.isChanged(filePath)) {
+        this.files[filePath].version++;
+      }
+      return;
+    }
+
+    if (this.compileCache.resultChanged(filePath, options)) {
       this.files[filePath].version++;
     }
   }, this);
