@@ -47,7 +47,11 @@ SH.getScriptFileNames = function() {
   }
   var typings = this.options.typings;
   if (typings) {
-    rootFilePaths = rootFilePaths.concat(typings);
+    _.each(typings, function(filePath) {
+      if (! this.files[filePath]) {
+        rootFilePaths.push(filePath);
+      }
+    }, this);
   }
   return rootFilePaths;
 };

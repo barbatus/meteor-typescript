@@ -53,23 +53,23 @@ function lazyInit() {
 }
 
 function TSBuild(filePaths, getFileContent, options) {
-  validateAndConvertOptions(options);
+  var resOptions = validateAndConvertOptions(options);
 
   lazyInit();
 
-  if (! options)
-    options = {compilerOptions: getConvertedDefault()};
+  if (! resOptions)
+    resOptions = {compilerOptions: getConvertedDefault()};
 
-  if (! options.compilerOptions) 
-    options.compilerOptions = getConvertedDefault();
+  if (! resOptions.compilerOptions) 
+    resOptions.compilerOptions = getConvertedDefault();
 
-  this.options = options;
+  this.options = resOptions;
 
   sourceHost.setSource(getFileContent);
 
-  serviceHost.setFiles(filePaths, options);
+  serviceHost.setFiles(filePaths, resOptions);
 
-  this.rebuildMap = getRebuildMap(filePaths, options);
+  this.rebuildMap = getRebuildMap(filePaths, resOptions);
 }
 
 function rebuildWithNewTypings(filePath, typings) {
@@ -183,7 +183,7 @@ function checkType(option, optionName) {
 }
 
 function validateAndConvertOptions(options) {
-  if (! options) return;
+  if (! options) return null;
 
   // Validate top level options.
   for (var option in options) {
@@ -200,11 +200,14 @@ function validateAndConvertOptions(options) {
     }
   }
 
+  var resOptions = _.clone(options);
   // Validate and convert compilerOptions.
   if (options.compilerOptions) {
-    options.compilerOptions = convertCompilerOptionsOrThrow(
+    resOptions.compilerOptions = convertCompilerOptionsOrThrow(
       options.compilerOptions);
   }
+
+  return resOptions;
 }
 
 exports.validateAndConvertOptions = validateAndConvertOptions;

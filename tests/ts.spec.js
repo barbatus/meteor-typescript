@@ -271,5 +271,19 @@ describe("meteor-typescript -> ", function() {
 
       expect(result2.diagnostics.semanticErrors.length).toEqual(1);
     });
+
+    it("should handle ambient typings properly", function() {
+      var foo11 = "declare module Foo { interface Test {}};";
+      var foo12 = "var test: Foo.Test";
+
+      var build1 = new TSBuild(["foo11.d.ts", "foo12.ts"], function(filePath) {
+        if (filePath === "foo11.d.ts") return foo11;
+        if (filePath === "foo12.ts") return foo12;
+      });
+
+      var result1 = build1.emit("foo12.ts");
+
+      expect(result1.diagnostics.semanticErrors.length).toEqual(0);
+    });
   });
 });
