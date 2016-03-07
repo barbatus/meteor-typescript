@@ -148,7 +148,13 @@ exports.compile = function compile(fileContent, options) {
   var optPath = options && options.filePath;
   var moduleName = options && options.moduleName;
 
-  var optPath = optPath ? optPath : deepHash(fileContent, options) + ".ts";
+  if (! optPath) {
+    optPath = deepHash(fileContent, options);
+    var tsx = (options && options.compilerOptions && 
+      options.compilerOptions.jsx);
+    optPath += tsx ? ".tsx" : ".ts";
+  }
+
   var getFileContent = function(filePath) {
     if (filePath === optPath) {
       return fileContent;

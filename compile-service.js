@@ -52,7 +52,6 @@ CP.getSourceFile = function(filePath) {
   var options = this.serviceHost.getCompilationSettings();
   var script = this.serviceHost.getScriptSnapshot(filePath);
   var version = this.serviceHost.getScriptVersion(filePath);
-  // TODO: add ts.ScriptKind?
   var sourceFile = this.registry.acquireDocument(
     filePath, options, script, version);
   return sourceFile;

@@ -57,9 +57,9 @@ describe("meteor-typescript -> ", function() {
       var test = function() {
           meteorTS.compile(testCodeLine, getOptions({
             compilerOptions: {
-            module: "wrong"
-          }
-        }));
+              module: "wrong"
+            }
+          }));
       };
       expect(test).toThrow();
     });
@@ -83,6 +83,18 @@ describe("meteor-typescript -> ", function() {
       var codeLine = "module foo { export var fooVar = \'fooVar\'}";
       var result = meteorTS.compile(codeLine, getOptions());
       expect(result.isExternal).toEqual(false);
+    });
+
+    it("should compile React if jsx set", function() {
+      var reactCodeLine = "class Component { render() { return <div />; } }";
+      var result = meteorTS.compile(reactCodeLine, getOptions({
+        compilerOptions: {
+          jsx: "react"
+        },
+        typings: ["typings/lib.d.ts"]
+      }));
+
+      expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
   });
 
