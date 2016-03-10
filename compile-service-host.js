@@ -5,6 +5,7 @@ var deepHash = require("./utils").deepHash;
 var _ = require("underscore");
 var sourceHost = require("./files-source-host").sourceHost;
 var tsu = require("./ts-utils").ts;
+var Logger = require("./logger").Logger;
 
 function CompileServiceHost(fileCache) {
   this.files = {};
@@ -34,14 +35,25 @@ SH.setFiles = function(filePaths, options) {
     if (this.fileCache.isChanged(filePath)) {
       this.files[filePath].version++;
       this.files[filePath].changed = true;
-      typingsChanged = typingsChanged || isTypings;
+      if (isTypings) {
+        Logger.debug("declaration file %s changed", filePath);
+        typingsChanged = true;
+      }
       this.fileCache.save(filePath);
     }
   }, this);
 
-  this.typingsChanged = typingsChanged ||
-    this.fileCache.isChanged(this.appId, typings);
-  this.fileCache.save(this.appId, typings);
+  this.typingsChanged = typingsChanged;
+
+  if (options && options.arch) {
+    var profileId = this.appId + options.arch;
+    typingsChanged = this.fileCache.isChanged(profileId, typings);
+    if (typingsChanged) {
+      Logger.debug("typings of %s changed", options.arch);
+      this.typingsChanged = typingsChanged;
+    }
+    this.fileCache.save(profileId, typings);
+  }
 };
 
 SH.isFileChanged = function(filePath) {

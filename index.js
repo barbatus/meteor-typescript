@@ -93,7 +93,6 @@ function getRebuildMap(filePaths, options) {
   var files = {};
 
   if (serviceHost.isTypingsChanged()) {
-    Logger.debug("global typings changed: recompiling all");
     _.each(filePaths, function(filePath) {
       files[filePath] = true;
     });
