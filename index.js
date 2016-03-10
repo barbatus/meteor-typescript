@@ -13,14 +13,14 @@ var utils = require("./utils");
 var _ = require("underscore");
 
 var compileCache;
-var typingsCache;
+var fileCache;
 function setCacheDir(cacheDir) {
   if (compileCache && compileCache.cacheDir === cacheDir) {
     return;
   }
 
   compileCache = new CompileCache(cacheDir);
-  typingsCache = new FileCache(cacheDir);
+  fileCache = new FileCache(cacheDir);
 };
 
 exports.setCacheDir = setCacheDir;
@@ -44,7 +44,7 @@ function lazyInit() {
   }
 
   if (! serviceHost) {
-    serviceHost = new ServiceHost(compileCache, typingsCache);
+    serviceHost = new ServiceHost(fileCache);
   }
 
   if (! compileService) {
@@ -72,28 +72,22 @@ function TSBuild(filePaths, getFileContent, options) {
   this.rebuildMap = getRebuildMap(filePaths, resOptions);
 }
 
-function rebuildWithNewTypings(filePath, typings) {
-  typings = typings || [];
-  var rebuild = typingsCache.isChanged(filePath, typings);
-  typingsCache.save(filePath, typings);
+function rebuildWithNewTypings(typings) {
+  if (! typings) return false;
 
   var tLen = typings.length;
   for (var i = 0; i < tLen; i++) {
     var path = typings[i];
-    if (typingsCache.isChanged(path)) {
-      typingsCache.save(path);
-      rebuild = true;
-    }
+    if (serviceHost.isFileChanged(path)) return true;
   }
 
-  return rebuild;
+  return false;
 }
 
 function getRebuildMap(filePaths, options) {
   var files = {};
 
-  var appPath = ts.sys.getCurrentDirectory();
-  if (rebuildWithNewTypings(appPath, options.typings)) {
+  if (serviceHost.isTypingsChanged()) {
     _.each(filePaths, function(filePath) {
       files[filePath] = true;
     });
@@ -105,7 +99,7 @@ function getRebuildMap(filePaths, options) {
       var result = compileCache.get(filePath, options);
       var refs = result.references;
       if (refs) {
-        files[filePath] = rebuildWithNewTypings(filePath, refs.typings);
+        files[filePath] = rebuildWithNewTypings(refs.typings);
         if (files[filePath]) return;
 
         var modules = refs.modules;

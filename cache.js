@@ -155,7 +155,7 @@ CCp.get = function(filePath, options, compileFn, force) {
   return compileResult;
 };
 
-Cp.resultChanged = function(filePath, options) {
+CCp.resultChanged = function(filePath, options) {
   var source = sourceHost.get(filePath);
   var cacheKey = utils.deepHash(pkgVersion, source, options);
   var compileResult = this._cache.get(cacheKey);
@@ -181,19 +181,16 @@ exports.FileCache = FileCache;
 var FCp = FileCache.prototype = new Cache();
 
 FCp.save = function(filePath, content) {
-  var content = content === undefined ?
+  content = content === undefined ?
     sourceHost.get(filePath) : content;
-
   var cacheKey = utils.deepHash(filePath);
   var contentHash = utils.deepHash(content);
   this._save(cacheKey, contentHash);
 };
 
 FCp.isChanged = function(filePath, content) {
-  var content = content === undefined ?
-    sourceHost.get(filePath) : content;
-  if (! content) return true;
-  
+  content = content === undefined ?
+    sourceHost.get(filePath) : content;  
   var cacheKey = utils.deepHash(filePath);
   var contentHash = utils.deepHash(content);
   return this._get(cacheKey) != contentHash;

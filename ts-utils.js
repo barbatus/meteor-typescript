@@ -85,7 +85,7 @@ function isSourceMap(fileName) {
 }
 
 function isTypings(fileName) {
-  return /\.d\.ts$/.test(fileName);
+  return ts.fileExtensionIs(fileName, '.d.ts');
 }
 
 exports.ts = {

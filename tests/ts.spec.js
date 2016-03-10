@@ -249,7 +249,7 @@ describe("meteor-typescript -> ", function() {
 
     it("should update diagnostics when file's references has changed", function() {
       var foo9 = "module foo9 { export var foo = 'foo' }";
-      var foo10 = "/// <reference path='foo9.ts'> \n" +
+      var foo10 = "/// <reference path='foo9.ts' /> \n " +
                   "module foo10 { export var foo = foo9.foo }";
 
       var build1 = new TSBuild(["foo9.ts", "foo10.ts"], function(filePath) {
@@ -270,6 +270,7 @@ describe("meteor-typescript -> ", function() {
       var result2 = build2.emit("foo10.ts");
 
       expect(result2.diagnostics.semanticErrors.length).toEqual(1);
+      expect(result2.diagnostics.semanticErrors[0].message).toContain("'foo' does not exist");
     });
 
     it("should handle ambient typings properly", function() {
@@ -284,6 +285,26 @@ describe("meteor-typescript -> ", function() {
       var result1 = build1.emit("foo12.ts");
 
       expect(result1.diagnostics.semanticErrors.length).toEqual(0);
+    });
+
+    it("should take result from cache for once compiled code", function() {
+      var build1 = new TSBuild(["foo13.ts"], function(filePath) {
+        if (filePath === "foo13.ts") return testCodeLine;
+      });
+      var result1 = build1.emit("foo13.ts");
+
+      var changedCode = "export const foo1 = 'foo'";
+      var build2 = new TSBuild(["foo13.ts"], function(filePath) {
+        if (filePath === "foo13.ts") return changedCode;
+      });
+      var result2 = build2.emit("foo13.ts");
+
+      var build3 = new TSBuild(["foo13.ts"], function(filePath) {
+        if (filePath === "foo13.ts") return testCodeLine;
+      });
+      var result3 = build3.emit("foo13.ts");
+
+      expect(result3).toEqual(result1);
     });
   });
 });
