@@ -9,6 +9,7 @@ var sourceHost = require("./files-source-host").sourceHost;
 var deepHash = require("./utils").deepHash;
 var CompileCache = require("./cache").CompileCache;
 var FileCache = require("./cache").FileCache;
+var Logger = require("./logger").Logger;
 var utils = require("./utils");
 var _ = require("underscore");
 
@@ -130,6 +131,7 @@ BP.emit = function(filePath, moduleName) {
   }
 
   return compileCache.get(filePath, options, function() {
+    Logger.debug("cache miss: %s", filePath);
     return compileService.compile(filePath, moduleName);
   }, this.rebuildMap[filePath]);
 };

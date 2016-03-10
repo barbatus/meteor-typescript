@@ -95,8 +95,9 @@ SH.getCompilationSettings = function() {
 SH.getDefaultLibFileName = function() {
   var libName = ts.getDefaultLibFilePath(
     this.getCompilationSettings());
-  if (! this.webArchExp.test(this.options.arch)) {
-    return libName.replace(/lib\./, 'lib.core.');
+  if ( this.webArchExp.test(this.options.arch)) {
+    var dir = ts.getDirectoryPath(libName);
+    return ts.combinePaths(dir, "lib.dom.d.ts");
   }
   return libName;
 };

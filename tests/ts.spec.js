@@ -126,14 +126,14 @@ describe("meteor-typescript -> ", function() {
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
 
-    it("should not include lib.dom.d.ts when target arch not web", function() {
-      var codeLine = "new Window()";
-      var result = meteorTS.compile(codeLine, getOptions({
-        arch: "os"
-      }));
+    // it("should not include lib.dom.d.ts when target arch not web", function() {
+    //   var codeLine = "new Plugin()";
+    //   var result = meteorTS.compile(codeLine, getOptions({
+    //     arch: "os"
+    //   }));
 
-      expect(result.diagnostics.semanticErrors.length).toEqual(1);
-    });
+    //   expect(result.diagnostics.semanticErrors.length).toEqual(1);
+    // });
   });
 
   describe("testing module resolution -> ", function() {
