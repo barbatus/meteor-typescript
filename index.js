@@ -54,6 +54,8 @@ function lazyInit() {
 }
 
 function TSBuild(filePaths, getFileContent, options) {
+  Logger.debug("new build");
+
   var resOptions = validateAndConvertOptions(options);
 
   lazyInit();
@@ -86,9 +88,12 @@ function rebuildWithNewTypings(typings) {
 }
 
 function getRebuildMap(filePaths, options) {
+  if (options.useCache === false) return;
+
   var files = {};
 
   if (serviceHost.isTypingsChanged()) {
+    Logger.debug("global typings changed: recompiling all");
     _.each(filePaths, function(filePath) {
       files[filePath] = true;
     });
@@ -97,11 +102,13 @@ function getRebuildMap(filePaths, options) {
 
   _.each(filePaths, function(filePath) {
     if (! compileCache.resultChanged(filePath, options)) {
-      var result = compileCache.get(filePath, options);
+      var result = compileCache.getOrDie(filePath, options);
       var refs = result.references;
       if (refs) {
         files[filePath] = rebuildWithNewTypings(refs.typings);
-        if (files[filePath]) return;
+        if (files[filePath]) {
+          Logger.debug("recompile file %s because typings changed", filePath);
+        };
 
         var modules = refs.modules;
         var mLen = modules.length;
@@ -123,6 +130,8 @@ exports.TSBuild = TSBuild;
 var BP = TSBuild.prototype;
 
 BP.emit = function(filePath, moduleName) {
+  Logger.debug("emit file %s", filePath);
+
   var options = this.options;
   var useCache = options && options.useCache;
 

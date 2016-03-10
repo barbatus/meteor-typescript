@@ -8,6 +8,7 @@ var utils = require("./utils");
 var pkgVersion = require("./package.json").version;
 var random = require("random-js")();
 var sourceHost = require("./files-source-host").sourceHost;
+var Logger = require("./logger").Logger;
 
 function ensureCacheDir(cacheDir) {
   cacheDir = path.resolve(
@@ -146,10 +147,26 @@ CCp.get = function(filePath, options, compileFn, force) {
   var cacheKey = utils.deepHash(pkgVersion, source, options);
   var compileResult = this._get(cacheKey);
 
+  if (compileResult) {
+    Logger.debug("file %s result is in cache", filePath);
+  }
+
   if (! compileResult || force === true) {
     compileResult = compileFn();
     compileResult.hash = cacheKey;
     this._save(cacheKey, compileResult);
+  }
+
+  return compileResult;
+};
+
+CCp.getOrDie = function(filePath, options) {
+  var source = sourceHost.get(filePath);
+  var cacheKey = utils.deepHash(pkgVersion, source, options);
+  var compileResult = this._get(cacheKey);
+
+  if (! compileResult) {
+    throw new Error("Compilation result not found: " + filePath);
   }
 
   return compileResult;

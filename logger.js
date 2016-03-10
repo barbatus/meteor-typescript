@@ -9,9 +9,10 @@ function Logger() {
 
 var LP = Logger.prototype;
 
-LP.debug = function(format, msg) {
+LP.debug = function(format, arg) {
   if (this.llevel >= 2) {
-    console.log(this.prefix + util.format(format, msg));
+    var msg = arg ? util.format(format, arg) : format;
+    console.log(this.prefix + msg);
   }
 };
 
