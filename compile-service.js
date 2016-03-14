@@ -57,6 +57,10 @@ CP.getSourceFile = function(filePath) {
   return sourceFile;
 };
 
+CP.getReferences = function(filePath) {
+  return tsu.getReferences(this.getSourceFile(filePath));
+};
+
 CP.getDiagnostics = function(filePath) {
   // Parse diagnostics.
   var syntactic = tsu.flattenDiagnostics(

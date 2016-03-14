@@ -100,9 +100,8 @@ function getRebuildMap(filePaths, options) {
   }
 
   _.each(filePaths, function(filePath) {
-    if (! compileCache.resultChanged(filePath, options)) {
-      var result = compileCache.getOrDie(filePath, options);
-      var refs = result.references;
+    if (! serviceHost.isFileChanged(filePath)) {
+      var refs = compileService.getReferences(filePath);
       if (refs) {
         files[filePath] = rebuildWithNewTypings(refs.typings);
         if (files[filePath]) {
@@ -112,7 +111,7 @@ function getRebuildMap(filePaths, options) {
         var modules = refs.modules;
         var mLen = modules.length;
         for (var i = 0; i < mLen; i++) {
-          if (compileCache.resultChanged(modules[i], options)) {
+          if (serviceHost.isFileChanged(modules[i])) {
             files[filePath] = true;
             break;
           }
@@ -134,11 +133,17 @@ BP.emit = function(filePath, moduleName) {
   var options = this.options;
   var useCache = options && options.useCache;
 
+  // Prepare file options which besides general ones
+  // should contain a module name.
+  var fOptions = {options: options , moduleName: moduleName};
+
   if (useCache === false) {
-    return compileService.compile(filePath, moduleName);
+    var result = compileService.compile(filePath, moduleName);
+    //compileCache.save(filePath, fOptions, result);
+    return result;
   }
 
-  return compileCache.get(filePath, options, function() {
+  return compileCache.get(filePath, fOptions, function() {
     Logger.debug("cache miss: %s", filePath);
     return compileService.compile(filePath, moduleName);
   }, this.rebuildMap[filePath]);

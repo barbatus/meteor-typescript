@@ -306,5 +306,23 @@ describe("meteor-typescript -> ", function() {
 
       expect(result3).toEqual(result1);
     });
+
+    it("should re-compile for a new module name", function() {
+      var options = {
+        compilerOptions: {
+          module: "system"
+        }
+      };
+      var build1 = new TSBuild(["foo14.ts"], function(filePath) {
+        if (filePath === "foo14.ts") return testCodeLine;
+      }, options);
+      var result1 = build1.emit("foo14.ts", "foo");
+
+      expect(result1.code).toContain("System.register(\"foo");
+
+      var result2 = build1.emit("foo14.ts", "foo1");
+
+      expect(result2.code).toContain("System.register(\"foo1");
+    });
   });
 });

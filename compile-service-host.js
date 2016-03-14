@@ -32,6 +32,10 @@ SH.setFiles = function(filePaths, options) {
       this.files[filePath] = { version: 0 };
     }
 
+    if (! this.fileCache.isChanged(filePath)) {
+      this.files[filePath].changed = false;
+    }
+
     if (this.fileCache.isChanged(filePath)) {
       this.files[filePath].version++;
       this.files[filePath].changed = true;
@@ -40,6 +44,7 @@ SH.setFiles = function(filePaths, options) {
         typingsChanged = true;
       }
       this.fileCache.save(filePath);
+      return;
     }
   }, this);
 

@@ -160,6 +160,13 @@ CCp.get = function(filePath, options, compileFn, force) {
   return compileResult;
 };
 
+CCp.save = function(filePath, options, compileResult) {
+  var source = sourceHost.get(filePath);
+  var cacheKey = utils.deepHash(pkgVersion, source, options);
+
+  this._save(cacheKey, compileResult);
+};
+
 CCp.getOrDie = function(filePath, options) {
   var source = sourceHost.get(filePath);
   var cacheKey = utils.deepHash(pkgVersion, source, options);
@@ -185,6 +192,7 @@ CCp.resultChanged = function(filePath, options) {
 };
 
 exports.CompileCache = CompileCache;
+
 
 function FileCache(cacheDir) {
   Cache.apply(this);
