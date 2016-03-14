@@ -139,7 +139,7 @@ BP.emit = function(filePath, moduleName) {
 
   if (useCache === false) {
     var result = compileService.compile(filePath, moduleName);
-    //compileCache.save(filePath, fOptions, result);
+    compileCache.save(filePath, fOptions, result);
     return result;
   }
 
