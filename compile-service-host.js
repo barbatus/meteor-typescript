@@ -62,7 +62,8 @@ SH.setFiles = function(filePaths, options) {
 };
 
 SH.isFileChanged = function(filePath) {
-  return this.files[filePath].changed;
+  var file = this.files[filePath];
+  return file && file.changed;
 };
 
 SH.isTypingsChanged = function() {
