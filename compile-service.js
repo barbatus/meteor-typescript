@@ -18,6 +18,8 @@ var CP = CompileService.prototype;
 
 CP.compile = function(filePath, moduleName) {
   var sourceFile = this.getSourceFile(filePath);
+  assert.ok(sourceFile);
+
   if (moduleName) {
     sourceFile.moduleName = moduleName;
   }
@@ -52,9 +54,9 @@ CP.getSourceFile = function(filePath) {
   var options = this.serviceHost.getCompilationSettings();
   var script = this.serviceHost.getScriptSnapshot(filePath);
   var version = this.serviceHost.getScriptVersion(filePath);
-  var sourceFile = this.registry.acquireDocument(
-    filePath, options, script, version);
-  return sourceFile;
+  if (script) return this.registry.acquireDocument(filePath,
+    options, script, version);
+  return null;
 };
 
 CP.getReferences = function(filePath) {

@@ -97,7 +97,7 @@ SH.getScriptVersion = function(filePath) {
 
 SH.getScriptSnapshot = function(filePath) {
   var source = sourceHost.get(filePath);
-  if (source) {
+  if (source !== null) {
     return ts.ScriptSnapshot.fromString(source);
   }
 

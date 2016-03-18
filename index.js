@@ -130,6 +130,9 @@ var BP = TSBuild.prototype;
 BP.emit = function(filePath, moduleName) {
   Logger.debug("emit file %s", filePath);
 
+  var sourceFile = compileService.getSourceFile(filePath);
+  if (! sourceFile) throw new Error("File " + filePath + " not found");
+
   var options = this.options;
   var useCache = options && options.useCache;
 

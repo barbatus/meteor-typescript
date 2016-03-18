@@ -1,6 +1,7 @@
 "use strict";
 
 var ts = require("typescript");
+var _ = require("underscore");
 
 var filesMap = ts.createFileMap();
 
@@ -15,7 +16,7 @@ SH.setSource = function(fileSource) {
 SH.get = function(filePath) {
   if (this.fileSource) {
     var source = this.fileSource(filePath);
-    if (source) return source;
+    if (_.isString(source)) return source;
   }
 
   if (filesMap.contains(filePath)) {

@@ -324,5 +324,21 @@ describe("meteor-typescript -> ", function() {
 
       expect(result2.code).toContain("System.register(\"foo1");
     });
+
+    it("should compile empty content", function() {
+      var build = new TSBuild(["foo15.ts"], function(filePath) {
+        if (filePath === "foo15.ts") return '';
+      });
+      var result = build.emit("foo15.ts", "foo");
+    });
+
+    it("should throw on emitting non-existed file", function() {
+      var build = new TSBuild();
+      var foo17 = function() {
+        build.emit("foo17.ts", "foo");
+      };
+
+      expect(foo17).toThrow();
+    });
   });
 });
