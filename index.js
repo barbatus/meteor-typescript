@@ -1,5 +1,6 @@
 "use strict";
 
+var assert = require("assert");
 var ts = require("typescript");
 var getDefaultCompilerOptions = require("./options").getDefaultCompilerOptions;
 var convertCompilerOptionsOrThrow = require("./options").convertCompilerOptionsOrThrow;
@@ -32,25 +33,26 @@ function getConvertedDefault() {
 }
 
 var serviceHost;
-var compileService;
-var docRegistry;
-
 function lazyInit() {
   if (! compileCache) {
     setCacheDir();
   }
 
-  if (! docRegistry) {
-    docRegistry = ts.createDocumentRegistry();
-  }
-
   if (! serviceHost) {
     serviceHost = new ServiceHost(fileCache);
   }
+}
 
-  if (! compileService) {
-    compileService = new CompileService(serviceHost, docRegistry);
-  }
+var serviceMap = {};
+function getCompileService(arch) {
+  if (! arch) arch = "global";
+
+  if (serviceMap[arch]) return serviceMap[arch];
+
+  var docRegistry = ts.createDocumentRegistry();
+  var service = new CompileService(serviceHost, docRegistry);
+  serviceMap[arch] = service;
+  return service;
 }
 
 function TSBuild(filePaths, getFileContent, options) {
@@ -88,6 +90,8 @@ function rebuildWithNewTypings(typings) {
 }
 
 function getRebuildMap(filePaths, options) {
+  assert.ok(options);
+
   if (options.useCache === false) return;
 
   var files = {};
@@ -98,6 +102,8 @@ function getRebuildMap(filePaths, options) {
     });
     return files;
   }
+
+  var compileService = getCompileService(options.arch);
 
   _.each(filePaths, function(filePath) {
     if (! serviceHost.isFileChanged(filePath)) {
@@ -129,11 +135,13 @@ var BP = TSBuild.prototype;
 
 BP.emit = function(filePath, moduleName) {
   Logger.debug("emit file %s", filePath);
+  var options = this.options;
+
+  var compileService = getCompileService(options.arch);
 
   var sourceFile = compileService.getSourceFile(filePath);
   if (! sourceFile) throw new Error("File " + filePath + " not found");
 
-  var options = this.options;
   var useCache = options && options.useCache;
 
   // Prepare file options which besides general ones
