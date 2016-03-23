@@ -37,10 +37,6 @@ function lazyInit() {
   if (! compileCache) {
     setCacheDir();
   }
-
-  if (! serviceHost) {
-    serviceHost = new ServiceHost(fileCache);
-  }
 }
 
 var serviceMap = {};
@@ -50,6 +46,7 @@ function getCompileService(arch) {
   if (serviceMap[arch]) return serviceMap[arch];
 
   var docRegistry = ts.createDocumentRegistry();
+  var serviceHost = new ServiceHost(fileCache);
   var service = new CompileService(serviceHost, docRegistry);
   serviceMap[arch] = service;
   return service;
@@ -72,15 +69,19 @@ function TSBuild(filePaths, getFileContent, options) {
 
   sourceHost.setSource(getFileContent);
 
+  var compileService = getCompileService(resOptions.arch);
+  var serviceHost = compileService.getHost();
   serviceHost.setFiles(filePaths, resOptions);
 
   this.rebuildMap = getRebuildMap(filePaths, resOptions);
 }
 
-function rebuildWithNewTypings(typings) {
+function rebuildWithNewTypings(typings, options) {
   if (! typings) return false;
 
   var tLen = typings.length;
+  var compileService = getCompileService(options.arch);
+  var serviceHost = compileService.getHost();
   for (var i = 0; i < tLen; i++) {
     var path = typings[i];
     if (serviceHost.isFileChanged(path)) return true;
@@ -95,6 +96,8 @@ function getRebuildMap(filePaths, options) {
   if (options.useCache === false) return;
 
   var files = {};
+  var compileService = getCompileService(options.arch);
+  var serviceHost = compileService.getHost();
 
   if (serviceHost.isTypingsChanged()) {
     _.each(filePaths, function(filePath) {
@@ -103,13 +106,11 @@ function getRebuildMap(filePaths, options) {
     return files;
   }
 
-  var compileService = getCompileService(options.arch);
-
   _.each(filePaths, function(filePath) {
     if (! serviceHost.isFileChanged(filePath)) {
       var refs = compileService.getReferences(filePath);
       if (refs) {
-        files[filePath] = rebuildWithNewTypings(refs.typings);
+        files[filePath] = rebuildWithNewTypings(refs.typings, options);
         if (files[filePath]) {
           Logger.debug("recompile file %s because typings changed", filePath);
         };

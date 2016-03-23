@@ -50,6 +50,14 @@ CP.compile = function(filePath, moduleName) {
   };
 };
 
+CP.getHost = function() {
+  return this.serviceHost;
+};
+
+CP.getDocRegistry = function() {
+  return this.registry;
+}
+
 CP.getSourceFile = function(filePath) {
   var options = this.serviceHost.getCompilationSettings();
   var script = this.serviceHost.getScriptSnapshot(filePath);
