@@ -39,6 +39,8 @@ function lazyInit() {
   }
 }
 
+// A map of TypeScript Language Services
+// per each Meteor architecture.
 var serviceMap = {};
 function getCompileService(arch) {
   if (! arch) arch = "global";
@@ -52,6 +54,22 @@ function getCompileService(arch) {
   return service;
 }
 
+/**
+ * Class that represents an incremental TypeScript build (compilation).
+ * For the typical usage in a Meteor compiler plugin,
+ * see a TypeScript compiler that based on this NPM:
+ * https://github.com/barbatus/typescript-compiler/blob/master/typescript-compiler.js#L58
+ *
+ * @param filePaths Paths of the files to compile.
+ * @param getFileContent Method that takes a file path
+ *  and returns that file's content. To be used to pass file contents
+ *  from a Meteor compiler plugin to the TypeScript compiler.
+ * @param options Object with the options of the TypeSctipt build.
+ *   Available options:
+ *    - compilerOptions: TypeScript compiler options
+ *    - arch: Meteor file architecture
+ *    - useCache: whether to use cache 
+ */
 function TSBuild(filePaths, getFileContent, options) {
   Logger.debug("new build");
 
@@ -188,6 +206,8 @@ exports.compile = function compile(fileContent, options) {
 
 var validOptions = {
   "compilerOptions": "Object",
+  // Next three to be used mainly
+  // in the compile method above.
   "filePath": "String",
   "moduleName": "String",
   "typings": "Array",

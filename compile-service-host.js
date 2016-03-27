@@ -50,8 +50,12 @@ SH.setFiles = function(filePaths, options) {
 
   this.typingsChanged = typingsChanged;
 
+  // Investigate if the number of declaration files have changed.
+  // In the positive case, we'll need to revaluate diagnostics
+  // for all files of specific architecture.
   if (options && options.arch) {
     var profileId = this.appId + options.arch;
+    // Check if the typings array differs from the previous value.
     typingsChanged = this.fileCache.isChanged(profileId, typings);
     if (typingsChanged) {
       Logger.debug("typings of %s changed", options.arch);

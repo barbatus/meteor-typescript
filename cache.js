@@ -135,6 +135,7 @@ Cp._writeCacheAsync = function(cacheKey, compileResult) {
 }
 
 
+// Cache to save and retrieve compiler results.
 function CompileCache(cacheDir) {
   Cache.apply(this);
   this.cacheDir = ensureCacheDir(cacheDir);
@@ -167,18 +168,8 @@ CCp.save = function(filePath, options, compileResult) {
   this._save(cacheKey, compileResult);
 };
 
-CCp.getOrDie = function(filePath, options) {
-  var source = sourceHost.get(filePath);
-  var cacheKey = utils.deepHash(pkgVersion, source, options);
-  var compileResult = this._get(cacheKey);
-
-  if (! compileResult) {
-    throw new Error("Compilation result not found: " + filePath);
-  }
-
-  return compileResult;
-};
-
+// Check if a compiler result has changed for a file
+// to compile with specific options.
 CCp.resultChanged = function(filePath, options) {
   var source = sourceHost.get(filePath);
   var cacheKey = utils.deepHash(pkgVersion, source, options);
@@ -194,6 +185,9 @@ CCp.resultChanged = function(filePath, options) {
 exports.CompileCache = CompileCache;
 
 
+// Simple cache that saves file content hashes.
+// Used to check if a file content has been changed
+// between two successive compilations.
 function FileCache(cacheDir) {
   Cache.apply(this);
   this.cacheDir = ensureCacheDir(cacheDir);
