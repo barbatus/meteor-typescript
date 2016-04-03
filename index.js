@@ -47,9 +47,8 @@ function getCompileService(arch) {
 
   if (serviceMap[arch]) return serviceMap[arch];
 
-  var docRegistry = ts.createDocumentRegistry();
   var serviceHost = new ServiceHost(fileCache);
-  var service = new CompileService(serviceHost, docRegistry);
+  var service = new CompileService(serviceHost);
   serviceMap[arch] = service;
   return service;
 }

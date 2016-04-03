@@ -185,9 +185,11 @@ CCp.resultChanged = function(filePath, options) {
 exports.CompileCache = CompileCache;
 
 
-// Simple cache that saves file content hashes.
-// Used to check if a file content has been changed
-// between two successive compilations.
+/**
+ * Simple cache that saves file content hashes.
+ * Used to check if a file content has been changed
+ * between two successive compilations.
+ */
 function FileCache(cacheDir) {
   Cache.apply(this);
   this.cacheDir = ensureCacheDir(cacheDir);
@@ -199,18 +201,16 @@ exports.FileCache = FileCache;
 
 var FCp = FileCache.prototype = new Cache();
 
-FCp.save = function(filePath, content) {
-  content = content === undefined ?
-    sourceHost.get(filePath) : content;
-  var cacheKey = utils.deepHash(filePath);
+FCp.save = function(filePath, arch, content) {
+  var profile = {filePath: filePath, arch: arch};
+  var cacheKey = utils.deepHash(profile);
   var contentHash = utils.deepHash(content);
   this._save(cacheKey, contentHash);
 };
 
-FCp.isChanged = function(filePath, content) {
-  content = content === undefined ?
-    sourceHost.get(filePath) : content;  
-  var cacheKey = utils.deepHash(filePath);
+FCp.isChanged = function(filePath, arch, content) {
+  var profile = {filePath: filePath, arch: arch};
+  var cacheKey = utils.deepHash(profile);
   var contentHash = utils.deepHash(content);
   return this._get(cacheKey) != contentHash;
 };

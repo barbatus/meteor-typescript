@@ -6,10 +6,9 @@ var _ = require("underscore");
 var sourceHost = require("./files-source-host").sourceHost;
 var tsu = require("./ts-utils").ts;
 
-function CompileService(serviceHost, docRegistry) {
+function CompileService(serviceHost) {
   this.serviceHost = serviceHost;
-  this.registry = docRegistry;
-  this.service = ts.createLanguageService(serviceHost, docRegistry);
+  this.service = ts.createLanguageService(serviceHost);
 }
 
 exports.CompileService = CompileService;
@@ -59,12 +58,8 @@ CP.getDocRegistry = function() {
 }
 
 CP.getSourceFile = function(filePath) {
-  var options = this.serviceHost.getCompilationSettings();
-  var script = this.serviceHost.getScriptSnapshot(filePath);
-  var version = this.serviceHost.getScriptVersion(filePath);
-  if (script) return this.registry.acquireDocument(filePath,
-    options, script, version);
-  return null;
+  var program = this.service.getProgram();
+  return program.getSourceFile(filePath);
 };
 
 CP.getReferences = function(filePath) {

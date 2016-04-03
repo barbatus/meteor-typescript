@@ -11,7 +11,7 @@ function CompileServiceHost(fileCache) {
   this.files = {};
   this.fileCache = fileCache;
   this.typingsChanged = false;
-  this.appId = ts.sys.getCurrentDirectory();
+  this.appId = this.curDir = ts.sys.getCurrentDirectory();
   this.webArchExp = new RegExp("^web\.");
 }
 
@@ -32,18 +32,25 @@ SH.setFiles = function(filePaths, options) {
       this.files[filePath] = { version: 0 };
     }
 
-    if (! this.fileCache.isChanged(filePath)) {
+    var arch = options.arch;
+    var source = sourceHost.get(filePath);
+    // Use file path with the current dir for the cache
+    // to avoid same file names coincidences between apps.
+    var fullPath = ts.combinePaths(this.curDir, filePath);
+    var fileChanged = this.fileCache.isChanged(
+      fullPath, arch, source);
+    if (! fileChanged) {
       this.files[filePath].changed = false;
     }
 
-    if (this.fileCache.isChanged(filePath)) {
+    if (fileChanged) {
       this.files[filePath].version++;
       this.files[filePath].changed = true;
       if (isTypings) {
         Logger.debug("declaration file %s changed", filePath);
         typingsChanged = true;
       }
-      this.fileCache.save(filePath);
+      this.fileCache.save(fullPath, arch, source);
       return;
     }
   }, this);
@@ -54,14 +61,14 @@ SH.setFiles = function(filePaths, options) {
   // In the positive case, we'll need to revaluate diagnostics
   // for all files of specific architecture.
   if (options && options.arch) {
-    var profileId = this.appId + options.arch;
+    var arch = options.arch;
     // Check if the typings array differs from the previous value.
-    typingsChanged = this.fileCache.isChanged(profileId, typings);
+    typingsChanged = this.fileCache.isChanged(this.appId, arch, typings);
     if (typingsChanged) {
-      Logger.debug("typings of %s changed", options.arch);
+      Logger.debug("typings of %s changed", arch);
       this.typingsChanged = typingsChanged;
     }
-    this.fileCache.save(profileId, typings);
+    this.fileCache.save(this.appId, arch, typings);
   }
 };
 
@@ -124,6 +131,13 @@ SH.getDefaultLibFileName = function() {
   return libName;
 };
 
+
+// Returns empty since we process for simplicity
+// file paths relative to the Meteor app.
 SH.getCurrentDirectory = function() {
   return "";
+};
+
+SH.useCaseSensitiveFileNames = function() {
+  return true;
 };
