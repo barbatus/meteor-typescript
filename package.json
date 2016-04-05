@@ -1,4 +1,4 @@
-  {
+{
   "name": "meteor-typescript",
   "author": "@barbatus",
   "version": "0.6.0-beta.3",
@@ -25,10 +25,11 @@
     "url": "https://github.com/barbatus/meteor-typescript/issues"
   },
   "dependencies": {
-    "typescript": "next",
+    "diff": "^2.2.2",
     "lru-cache": "^2.6.4",
-    "underscore": "^1.8.3",
-    "random-js": "^1.0.3"
+    "random-js": "^1.0.3",
+    "typescript": "next",
+    "underscore": "^1.8.3"
   },
   "devDependencies": {
     "jasmine-node": "^1.14.5"
