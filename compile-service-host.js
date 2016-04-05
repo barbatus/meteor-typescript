@@ -6,6 +6,7 @@ var _ = require("underscore");
 var sourceHost = require("./files-source-host").sourceHost;
 var tsu = require("./ts-utils").ts;
 var Logger = require("./logger").Logger;
+var StringScriptSnapshot = require("./script-snapshot").ScriptSnapshot;
 
 function CompileServiceHost(fileCache) {
   this.files = {};
@@ -109,12 +110,11 @@ SH.getScriptVersion = function(filePath) {
 SH.getScriptSnapshot = function(filePath) {
   var source = sourceHost.get(filePath);
   if (source !== null) {
-    return ts.ScriptSnapshot.fromString(source);
+    return new StringScriptSnapshot(source);
   }
 
   var fileContent = ts.sys.readFile(filePath, "utf-8");
-  return fileContent ?
-    ts.ScriptSnapshot.fromString(fileContent) : null;
+  return fileContent ? new StringScriptSnapshot(fileContent) : null;
 };
 
 SH.getCompilationSettings = function() {
@@ -124,7 +124,7 @@ SH.getCompilationSettings = function() {
 SH.getDefaultLibFileName = function() {
   var libName = ts.getDefaultLibFilePath(
     this.getCompilationSettings());
-  if ( this.webArchExp.test(this.options.arch)) {
+  if (this.webArchExp.test(this.options.arch)) {
     var dir = ts.getDirectoryPath(libName);
     return ts.combinePaths(dir, "lib.dom.d.ts");
   }

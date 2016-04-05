@@ -1,5 +1,6 @@
 var meteorTS = require("../index");
 var TSBuild = require("../index").TSBuild;
+var fs = require("fs");
 
 describe("meteor-typescript -> ", function() {
   function getOptions(options) {
@@ -334,11 +335,29 @@ describe("meteor-typescript -> ", function() {
 
     it("should throw on emitting non-existed file", function() {
       var build = new TSBuild();
-      var foo17 = function() {
-        build.emit("foo17.ts", "foo");
+      var foo16 = function() {
+        build.emit("foo16.ts", "foo");
       };
 
-      expect(foo17).toThrow();
+      expect(foo16).toThrow();
+    });
+
+    it("should evaluate script changes properly", function() {
+      var content1 = fs.readFileSync("./file1.ts", 'utf8');
+      var content2 = fs.readFileSync("./file2.ts", 'utf8');
+
+      var build1 = new TSBuild(["foo17.ts"], function(filePath) {
+        if (filePath === "foo17.ts") return content1;
+      });
+      var result1 = build1.emit("foo17.ts");
+
+      var build2 = new TSBuild(["foo17.ts"], function(filePath) {
+        if (filePath === "foo17.ts") return content2;
+      });
+      var result2 = build2.emit("foo17.ts");
+
+      expect(result2.code).toContain("newlog");
+      expect(result2.code).toContain("te_");
     });
   });
 });
