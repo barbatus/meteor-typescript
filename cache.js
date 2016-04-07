@@ -36,7 +36,8 @@ function Cache() {
 
   var maxSize = process.env.TYPESCRIPT_CACHE_SIZE;
   this._cache = new LRU({
-    max: maxSize || 1024 * 10 * 10
+    max: maxSize || 1024 * 1024 * 10,
+    length: function(str, key) { return str.length }
   });
 };
 
