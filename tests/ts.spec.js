@@ -122,19 +122,21 @@ describe("meteor-typescript -> ", function() {
 
     it("should always include lib.core.d.ts", function() {
       var codeLine = "new Object();";
-      var result = meteorTS.compile(codeLine, getOptions());
+      var result = meteorTS.compile(codeLine, getOptions({
+        arch: "web.browser"
+      }));
 
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
 
-    // it("should not include lib.dom.d.ts when target arch not web", function() {
-    //   var codeLine = "new Plugin()";
-    //   var result = meteorTS.compile(codeLine, getOptions({
-    //     arch: "os"
-    //   }));
+    it("should not include lib.d.ts when target arch not web", function() {
+      var codeLine = "new Plugin()";
+      var result = meteorTS.compile(codeLine, getOptions({
+        arch: "os"
+      }));
 
-    //   expect(result.diagnostics.semanticErrors.length).toEqual(1);
-    // });
+      expect(result.diagnostics.semanticErrors.length).toEqual(1);
+    });
   });
 
   describe("testing module resolution -> ", function() {

@@ -16,4 +16,11 @@ LP.debug = function(format, arg) {
   }
 };
 
+LP.assert = function(format, arg) {
+  if (this.llevel >= 3) {
+    var msg = arg ? util.format(format, arg) : format;
+    console.log(this.prefix + msg);
+  }
+};
+
 exports.Logger = new Logger();
