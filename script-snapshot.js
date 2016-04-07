@@ -1,5 +1,6 @@
 var ts = require("typescript");
 var jsdiff = require('diff');
+var Logger = require("./logger").Logger;
 
 function StringScriptSnapshot(text) {
   this.text = text;
@@ -41,7 +42,10 @@ StringScriptSnapshot.prototype.getChangeRange = function(oldSnapshot) {
       ind += diff.count;
     }
 
-    return ts.collapseTextChangeRangesAcrossMultipleVersions(changes);
+    changes = ts.collapseTextChangeRangesAcrossMultipleVersions(changes);
+    Logger.assert("accumulated file changes %s", changes);
+
+    return changes;
   }
 
   return ts.createTextChangeRange(ts.createTextSpan(0, 0), 0);

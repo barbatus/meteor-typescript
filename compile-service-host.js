@@ -126,11 +126,11 @@ SH.getDefaultLibFileName = function() {
     this.getCompilationSettings());
   if (! this.webArchExp.test(this.options.arch)) {
     var dir = ts.getDirectoryPath(libName);
-    return ts.combinePaths(dir, "lib.core.d.ts");
+    libName = ts.combinePaths(dir, "lib.core.d.ts");
   }
+  Logger.assert("default lib %s", libName);
   return libName;
 };
-
 
 // Returns empty since we process for simplicity
 // file paths relative to the Meteor app.
