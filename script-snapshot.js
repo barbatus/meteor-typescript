@@ -43,7 +43,7 @@ StringScriptSnapshot.prototype.getChangeRange = function(oldSnapshot) {
     }
 
     changes = ts.collapseTextChangeRangesAcrossMultipleVersions(changes);
-    Logger.assert("accumulated file changes %s", changes);
+    Logger.assert("accumulated file changes %j", changes);
 
     return changes;
   }
