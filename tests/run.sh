@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+npm install
+
 cd $(dirname $0)
 
 rm -fr ".cache"
