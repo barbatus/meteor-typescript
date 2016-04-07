@@ -35,7 +35,6 @@ StringScriptSnapshot.prototype.getChangeRange = function(oldSnapshot) {
       if (diff.removed) {
         changes.push(ts.createTextChangeRange(
           ts.createTextSpan(ind, diff.count), 0));
-        ind -= diff.count;
         continue;
       }
 
