@@ -12,6 +12,7 @@ var CompileCache = require("./cache").CompileCache;
 var FileCache = require("./cache").FileCache;
 var Logger = require("./logger").Logger;
 var utils = require("./utils");
+var tsu = require("./ts-utils").ts;
 var _ = require("underscore");
 
 var compileCache;
@@ -107,6 +108,11 @@ function rebuildWithNewTypings(typings, options) {
   return false;
 }
 
+var RebuildType = {
+  FULL: 1,
+  DIAG: 2
+};
+
 function getRebuildMap(filePaths, options) {
   assert.ok(options);
 
@@ -118,7 +124,7 @@ function getRebuildMap(filePaths, options) {
 
   if (serviceHost.isTypingsChanged()) {
     _.each(filePaths, function(filePath) {
-      files[filePath] = true;
+      files[filePath] = RebuildType.FULL;
     });
     return files;
   }
@@ -136,7 +142,7 @@ function getRebuildMap(filePaths, options) {
         var mLen = modules.length;
         for (var i = 0; i < mLen; i++) {
           if (serviceHost.isFileChanged(modules[i])) {
-            files[filePath] = true;
+            files[filePath] = RebuildType.FULL;
             break;
           }
         }
@@ -172,10 +178,32 @@ BP.emit = function(filePath, moduleName) {
     return result;
   }
 
-  return compileCache.get(filePath, fOptions, function() {
-    Logger.debug("cache miss: %s", filePath);
-    return compileService.compile(filePath, moduleName);
-  }, this.rebuildMap[filePath]);
+  var rebuild = this.rebuildMap[filePath];
+  return compileCache.get(filePath, fOptions, function(compResult) {
+    if (! compResult) {
+      Logger.debug("cache miss: %s", filePath);
+      return compileService.compile(filePath, moduleName);
+    }
+
+    if (rebuild === RebuildType.FULL) {
+      Logger.debug("full rebuild: %s", filePath);
+      return compileService.compile(filePath, moduleName);
+    }
+
+    // If file is not changed but contains errors from previous
+    // build, then mark it as needs diagnostics re-evaluation.
+    // This is due to some node modules may become
+    // available in the mean time.
+    if (tsu.hasErrors(compResult.diagnostics)) {
+      Logger.debug("diagnostics re-evaluation: %s", filePath);
+      compResult.diagnostics =
+        compileService.getDiagnostics(filePath);
+      return compResult;
+    }
+
+    // Cached result is up to date, no action required.
+    return null;
+  });
 };
 
 exports.compile = function compile(fileContent, options) {

@@ -67,13 +67,8 @@ CP.getReferences = function(filePath) {
 };
 
 CP.getDiagnostics = function(filePath) {
-  // Parse diagnostics.
-  var syntactic = tsu.flattenDiagnostics(
-    this.service.getSyntacticDiagnostics(filePath));
-  var semantic = tsu.flattenDiagnostics(
-    this.service.getSemanticDiagnostics(filePath));
-  return {
-    syntacticErrors: syntactic,
-    semanticErrors: semantic
-  };
+  return tsu.createDiagnostics(
+    this.service.getSyntacticDiagnostics(filePath),
+    this.service.getSemanticDiagnostics(filePath)
+  )
 };

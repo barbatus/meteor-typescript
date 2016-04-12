@@ -56,6 +56,16 @@ function getReferences(sourceFile) {
   };
 }
 
+function createDiagnostics(tsSyntactic, tsSemantic) {
+  // Parse diagnostics to leave only info we need.
+  var syntactic = flattenDiagnostics(tsSyntactic);
+  var semantic = flattenDiagnostics(tsSemantic);
+  return {
+    syntacticErrors: syntactic,
+    semanticErrors: semantic
+  };
+}
+
 function flattenDiagnostics(tsDiagnostics) {
   var diagnostics = [];
 
@@ -80,6 +90,13 @@ function flattenDiagnostics(tsDiagnostics) {
   return diagnostics;
 }
 
+function hasErrors(diagnostics) {
+  if (! diagnostics) return true;
+
+  return !! diagnostics.semanticErrors.length ||
+    !! diagnostics.syntacticErrors.length;
+}
+
 function isSourceMap(fileName) {
   return ts.fileExtensionIs(fileName, '.map');
 }
@@ -92,6 +109,8 @@ exports.ts = {
   normalizePath: normalizePath,
   prepareSourceMap: prepareSourceMap,
   getReferences: getReferences,
+  createDiagnostics: createDiagnostics,
+  hasErrors: hasErrors,
   flattenDiagnostics: flattenDiagnostics,
   isSourceMap: isSourceMap,
   isTypings: isTypings

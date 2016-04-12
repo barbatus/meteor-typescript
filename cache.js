@@ -10,14 +10,16 @@ var random = require("random-js")();
 var sourceHost = require("./files-source-host").sourceHost;
 var Logger = require("./logger").Logger;
 
+function meteorLocalDir() {
+  var cwdDir = process.cwd();
+  return cwdDir ? path.join(cwdDir, ".meteor", "local") : __dirname;
+}
+
 function ensureCacheDir(cacheDir) {
   cacheDir = path.resolve(
     cacheDir ||
     process.env.TYPESCRIPT_CACHE_DIR ||
-    path.join(
-      process.env.HOME || process.env.USERPROFILE || __dirname,
-        ".typescript-cache"
-    )
+    path.join(meteorLocalDir(), ".typescript-cache")
   );
 
   try {
@@ -144,7 +146,7 @@ function CompileCache(cacheDir) {
 
 var CCp = CompileCache.prototype = new Cache();
 
-CCp.get = function(filePath, options, compileFn, force) {
+CCp.get = function(filePath, options, compileFn) {
   var source = sourceHost.get(filePath);
   var cacheKey = utils.deepHash(pkgVersion, source, options);
   var compileResult = this._get(cacheKey);
@@ -153,10 +155,12 @@ CCp.get = function(filePath, options, compileFn, force) {
     Logger.debug("file %s result is in cache", filePath);
   }
 
-  if (! compileResult || force === true) {
-    compileResult = compileFn();
-    compileResult.hash = cacheKey;
-    this._save(cacheKey, compileResult);
+  var newResult = compileFn(compileResult);
+
+  if (newResult) {
+    newResult.hash = cacheKey;
+    this._save(cacheKey, newResult);
+    return newResult;
   }
 
   return compileResult;
