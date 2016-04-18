@@ -6,7 +6,7 @@ var _ = require("underscore");
 function presetCompilerOptions(customOptions) {
   if (! customOptions) return;
 
-  var compilerOptions = _.clone(customOptions);
+  var compilerOptions = customOptions;
 
   // Declaration files are expected to
   // be generated separately.

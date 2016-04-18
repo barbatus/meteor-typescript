@@ -160,6 +160,19 @@ describe("meteor-typescript -> ", function() {
       expect(result.code).toContain("exports.foo");
     });
 
+    it("meteor compiler options preset applied", function() {
+      var build = new TSBuild(["foo.ts"], function(filePath) {
+        if (filePath === "foo.ts") return testCodeLine;
+      }, getOptions());
+
+      expect(build.options.compilerOptions).toEqual(
+        jasmine.objectContaining({
+          watch: false,
+          outDir: null,
+          outFile: null
+        }));
+    });
+
     it("should access local dependency using provided content getter", function() {
       var importCodeLine = "import {foo} from './foo1'";
 

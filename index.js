@@ -4,6 +4,7 @@ var assert = require("assert");
 var ts = require("typescript");
 var getDefaultCompilerOptions = require("./options").getDefaultCompilerOptions;
 var convertCompilerOptionsOrThrow = require("./options").convertCompilerOptionsOrThrow;
+var presetCompilerOptions = require("./options").presetCompilerOptions;
 var CompileService = require("./compile-service").CompileService;
 var ServiceHost = require("./compile-service-host").CompileServiceHost;
 var sourceHost = require("./files-source-host").sourceHost;
@@ -82,6 +83,9 @@ function TSBuild(filePaths, getFileContent, options) {
 
   if (! resOptions.compilerOptions) 
     resOptions.compilerOptions = getConvertedDefault();
+
+  resOptions.compilerOptions = presetCompilerOptions(
+    resOptions.compilerOptions);
 
   this.options = resOptions;
 
