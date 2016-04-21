@@ -5,6 +5,7 @@ var ts = require("typescript");
 var _ = require("underscore");
 var sourceHost = require("./files-source-host").sourceHost;
 var tsu = require("./ts-utils").ts;
+var assertProps = require("./utils").assertProps;
 
 function CompileService(serviceHost) {
   this.serviceHost = serviceHost;
@@ -39,14 +40,14 @@ CP.compile = function(filePath, moduleName) {
     }
   }, this);
 
-  return {
+  return createCSResult({
     code: code,
     sourceMap: sourceMap,
     version: this.serviceHost.getScriptVersion(filePath),
     isExternal: ts.isExternalModule(sourceFile),
     references: tsu.getReferences(sourceFile),
     diagnostics: this.getDiagnostics(filePath)
-  };
+  });
 };
 
 CP.getHost = function() {
@@ -71,4 +72,29 @@ CP.getDiagnostics = function(filePath) {
     this.service.getSyntacticDiagnostics(filePath),
     this.service.getSemanticDiagnostics(filePath)
   )
+};
+
+function createCSResult(result) {
+  assertProps(result, [
+    "code", "sourceMap", "version",
+    "isExternal", "references", "diagnostics"
+  ]);
+  result.diagnostics = new tsu.TsDiagnostics(
+    result.diagnostics);
+
+  return new CSResult(result);
+}
+
+exports.createCSResult = createCSResult;
+
+function CSResult(result) {
+  assert.ok(this instanceof CSResult);
+
+  _.extend(this, result);
+}
+
+var CRP = CSResult.prototype;
+
+CRP.upDiagnostics = function(diagnostics) {
+  this.diagnostics = new tsu.TsDiagnostics(diagnostics);
 };

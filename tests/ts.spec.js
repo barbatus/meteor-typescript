@@ -1,3 +1,4 @@
+var ts = require("typescript");
 var meteorTS = require("../index");
 var TSBuild = require("../index").TSBuild;
 var fs = require("fs");
@@ -107,6 +108,8 @@ describe("meteor-typescript -> ", function() {
 
       expect(result.diagnostics.semanticErrors).not.toBeNull();
       expect(result.diagnostics.semanticErrors.length).toEqual(1);
+      var code = result.diagnostics.semanticErrors[0].code;
+      expect(code).toEqual(ts.Diagnostics.Cannot_find_module_0.code);
       var error = result.diagnostics.semanticErrors[0].message;
       expect(error).toContain("Cannot find module 'lib'");
     });

@@ -1,7 +1,7 @@
 {
   "name": "meteor-typescript",
   "author": "@barbatus",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "license": "MIT",
   "description": "TypeScript wrapper package for use with Meteor",
   "keywords": [
@@ -28,7 +28,7 @@
     "diff": "^2.2.2",
     "lru-cache": "^2.6.4",
     "random-js": "^1.0.3",
-    "typescript": "next",
+    "typescript": "^1.8.10",
     "underscore": "^1.8.3"
   },
   "devDependencies": {

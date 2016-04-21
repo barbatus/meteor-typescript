@@ -6,6 +6,7 @@ var getDefaultCompilerOptions = require("./options").getDefaultCompilerOptions;
 var convertCompilerOptionsOrThrow = require("./options").convertCompilerOptionsOrThrow;
 var presetCompilerOptions = require("./options").presetCompilerOptions;
 var CompileService = require("./compile-service").CompileService;
+var createCSResult = require("./compile-service").createCSResult;
 var ServiceHost = require("./compile-service-host").CompileServiceHost;
 var sourceHost = require("./files-source-host").sourceHost;
 var deepHash = require("./utils").deepHash;
@@ -173,18 +174,23 @@ BP.emit = function(filePath, moduleName) {
   var useCache = options && options.useCache;
 
   // Prepare file options which besides general ones
-  // should contain a module name.
-  var fOptions = {options: options , moduleName: moduleName};
+  // should contain a module name. Omit arch to avoid
+  // re-compiling same files aimed for diff arch.
+  var noArchOpts = _.omit(options, 'arch');
+  var csOptions = {
+    options: noArchOpts,
+    moduleName: moduleName
+  };
 
   if (useCache === false) {
     var result = compileService.compile(filePath, moduleName);
-    compileCache.save(filePath, fOptions, result);
+    compileCache.save(filePath, csOptions, result);
     return result;
   }
 
   var rebuild = this.rebuildMap[filePath];
-  return compileCache.get(filePath, fOptions, function(compResult) {
-    if (! compResult) {
+  return compileCache.get(filePath, csOptions, function(cacheResult) {
+    if (! cacheResult) {
       Logger.debug("cache miss: %s", filePath);
       return compileService.compile(filePath, moduleName);
     }
@@ -194,15 +200,17 @@ BP.emit = function(filePath, moduleName) {
       return compileService.compile(filePath, moduleName);
     }
 
+    var csResult = createCSResult(cacheResult);
+    var tsDiag = csResult.diagnostics;
     // If file is not changed but contains errors from previous
     // build, then mark it as needs diagnostics re-evaluation.
     // This is due to some node modules may become
     // available in the mean time.
-    if (tsu.hasErrors(compResult.diagnostics)) {
+    if (tsDiag.hasUnresolvedModules()) {
       Logger.debug("diagnostics re-evaluation: %s", filePath);
-      compResult.diagnostics =
-        compileService.getDiagnostics(filePath);
-      return compResult;
+      csResult.upDiagnostics(
+        compileService.getDiagnostics(filePath));
+      return csResult;
     }
 
     // Cached result is up to date, no action required.

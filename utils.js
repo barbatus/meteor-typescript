@@ -4,6 +4,7 @@ var fs = require("fs");
 var path = require("path");
 var createHash = require("crypto").createHash;
 var assert = require("assert");
+var _ = require("underscore");
 
 exports.mkdirp = function mkdirp(dir) {
   if (! fs.existsSync(dir)) {
@@ -79,4 +80,14 @@ exports.deepHash = function(val) {
   }
 
   return deepHash(args);
+};
+
+exports.assertProps = function(obj, props) {
+  assert.ok(obj);
+  assert.ok(props);
+
+  var len = props.length;
+  for (var i = 0; i < len; i++) {
+    assert.ok(_.has(obj, props[i]));
+  }
 };

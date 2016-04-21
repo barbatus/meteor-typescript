@@ -1,5 +1,7 @@
 "use strict";
 
+var assert = require("assert");
+var assertProps = require("./utils").assertProps;
 var ts = require("typescript");
 var _ = require("underscore");
 
@@ -66,6 +68,31 @@ function createDiagnostics(tsSyntactic, tsSemantic) {
   };
 }
 
+function TsDiagnostics(diagnostics) {
+  assert.ok(this instanceof TsDiagnostics);
+  assert.ok(diagnostics);
+  assertProps(diagnostics, [
+    'syntacticErrors', 'semanticErrors'
+  ]);
+
+  _.extend(this, diagnostics);
+}
+
+var TDP = TsDiagnostics.prototype;
+
+TDP.hasErrors = function() {
+  return !! this.semanticErrors.length ||
+    !! this.syntacticErrors.length;
+}
+
+TDP.hasUnresolvedModules = function() {
+  var index = _.findIndex(this.semanticErrors, function(msg) {
+    return (msg.code === ts.Diagnostics.Cannot_find_module_0.code ||
+      msg.code === ts.Diagnostics.Module_name_0_was_not_resolved.code);
+  });
+  return index !== -1;
+};
+
 function flattenDiagnostics(tsDiagnostics) {
   var diagnostics = [];
 
@@ -80,6 +107,7 @@ function flattenDiagnostics(tsDiagnostics) {
     var column = pos.character + 1;
 
     diagnostics.push({
+      code: diagnostic.code,
       fileName: diagnostic.file.fileName,
       message: message,
       line: line,
@@ -106,6 +134,7 @@ function isTypings(fileName) {
 }
 
 exports.ts = {
+  TsDiagnostics: TsDiagnostics,
   normalizePath: normalizePath,
   prepareSourceMap: prepareSourceMap,
   getReferences: getReferences,
