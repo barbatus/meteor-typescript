@@ -87,8 +87,7 @@ TDP.hasErrors = function() {
 
 TDP.hasUnresolvedModules = function() {
   var index = _.findIndex(this.semanticErrors, function(msg) {
-    return (msg.code === ts.Diagnostics.Cannot_find_module_0.code ||
-      msg.code === ts.Diagnostics.Module_name_0_was_not_resolved.code);
+    return msg.code === ts.Diagnostics.Cannot_find_module_0.code;
   });
   return index !== -1;
 };

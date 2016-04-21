@@ -114,6 +114,18 @@ describe("meteor-typescript -> ", function() {
       expect(error).toContain("Cannot find module 'lib'");
     });
 
+    it("diagnostics re-evaluation works fine", function() {
+      var result1 = meteorTS.compile(codeLineWithImport);
+
+      var code1 = result1.diagnostics.semanticErrors[0].code;
+      expect(code1).toEqual(ts.Diagnostics.Cannot_find_module_0.code);
+
+      var result2 = meteorTS.compile(codeLineWithImport);
+
+      var code2 = result2.diagnostics.semanticErrors[0].code;
+      expect(code2).toEqual(ts.Diagnostics.Cannot_find_module_0.code);
+    });
+
     it("declaration file with module declaration should remove an error", function() {
       var result = meteorTS.compile(codeLineWithImport, getOptions({
         typings: ["typings/lib.d.ts"]

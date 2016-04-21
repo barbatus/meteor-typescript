@@ -214,6 +214,7 @@ BP.emit = function(filePath, moduleName) {
     }
 
     // Cached result is up to date, no action required.
+    Logger.debug("file from cached: %s", filePath);
     return null;
   });
 };

@@ -4,6 +4,7 @@ var path = require("path");
 var fs = require("fs");
 var assert = require("assert");
 var LRU = require("lru-cache");
+var sizeof = require('object-sizeof');
 var utils = require("./utils");
 var pkgVersion = require("./package.json").version;
 var random = require("random-js")();
@@ -33,13 +34,15 @@ function ensureCacheDir(cacheDir) {
   return cacheDir;
 }
 
-function Cache() {
+function Cache(length) {
   assert.ok(this instanceof Cache);
 
   var maxSize = process.env.TYPESCRIPT_CACHE_SIZE;
   this._cache = new LRU({
     max: maxSize || 1024 * 1024 * 10,
-    length: function(str, key) { return str.length }
+    length: function(obj, key) {
+      return sizeof(obj);
+    }
   });
 };
 
