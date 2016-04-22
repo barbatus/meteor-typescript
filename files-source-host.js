@@ -26,11 +26,11 @@ SH.get = function(filePath) {
   return null;
 };
 
-var execPath = ts.sys.getExecutingFilePath();
-var npmPath = ts.combinePaths(ts.getDirectoryPath(
-  ts.normalizePath(execPath)),  "../../../");
-
 SH.loadSourceFile = function(filePath) {
+  var execPath = ts.sys.getExecutingFilePath();
+  var npmPath = ts.combinePaths(ts.getDirectoryPath(
+    ts.normalizePath(execPath)),  "../../../");
+
   var content = ts.sys.readFile(npmPath + filePath, "utf-8");
   var sourceFile = ts.createSourceFile(filePath, content);
   filesMap.set(filePath, sourceFile);
