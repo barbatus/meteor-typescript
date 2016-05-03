@@ -189,7 +189,8 @@ BP.emit = function(filePath, moduleName) {
   }
 
   var rebuild = this.rebuildMap[filePath];
-  return compileCache.get(filePath, csOptions, function(cacheResult) {
+  var pget = Logger.newProfiler("compileCache get");
+  var result = compileCache.get(filePath, csOptions, function(cacheResult) {
     if (! cacheResult) {
       Logger.debug("cache miss: %s", filePath);
       return compileService.compile(filePath, moduleName);
@@ -217,6 +218,9 @@ BP.emit = function(filePath, moduleName) {
     Logger.debug("file from cached: %s", filePath);
     return null;
   });
+  pget.end();
+
+  return result;
 };
 
 exports.compile = function compile(fileContent, options) {

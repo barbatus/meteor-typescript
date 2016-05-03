@@ -1,7 +1,7 @@
 {
   "name": "meteor-typescript",
   "author": "@barbatus",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "license": "MIT",
   "description": "TypeScript wrapper package for use with Meteor",
   "keywords": [
@@ -33,6 +33,7 @@
     "underscore": "^1.8.3"
   },
   "devDependencies": {
-    "jasmine-node": "^1.14.5"
+    "jasmine-node": "^1.14.5",
+    "randomstring": "^1.1.4"
   }
 }

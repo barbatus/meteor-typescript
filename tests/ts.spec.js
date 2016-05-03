@@ -1,7 +1,11 @@
 var ts = require("typescript");
+var fs = require("fs");
+var _ = require("underscore");
+var randomstring = require("randomstring");
+
 var meteorTS = require("../index");
 var TSBuild = require("../index").TSBuild;
-var fs = require("fs");
+var CompileCache = require("../cache").CompileCache;
 
 describe("meteor-typescript -> ", function() {
   function getOptions(options) {
@@ -388,6 +392,38 @@ describe("meteor-typescript -> ", function() {
 
       expect(result2.code).toContain("newlog");
       expect(result2.code).toContain("te_");
+    });
+  });
+
+  describe("cache profiling -> ", function() {
+    var files = {};
+    _.times(10, function() {
+      var name = randomstring.generate(10);
+      files[name] = {
+        content: randomstring.generate(1024 * 1024)
+      };
+    });
+
+    var cache = new CompileCache(null, {
+      get: function(filePath) {
+        return files[filePath];
+      }
+    });
+
+    var filePaths = _.keys(files);
+    _.each(filePaths, function(filePath) {
+      cache.save(filePath, {}, files[filePath]);
+    });
+
+    var elapsed = 0;
+    _.each(filePaths, function(filePath) {
+      var start = Date.now();
+      var result = cache.get(filePath, {}, function() {
+        return null;
+      });
+      var elapsed = Date.now() - start;
+      expect(elapsed <= 10).toEqual(true);
+      expect(result).toEqual(files[filePath]);
     });
   });
 });
