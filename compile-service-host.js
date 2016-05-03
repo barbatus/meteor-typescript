@@ -78,6 +78,10 @@ SH.isFileChanged = function(filePath) {
   return file && file.changed;
 };
 
+SH.hasFile = function(filePath) {
+  return !! this.files[filePath];
+};
+
 SH.isTypingsChanged = function() {
   return this.typingsChanged;
 };

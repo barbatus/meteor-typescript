@@ -92,7 +92,7 @@ function TSBuild(filePaths, getFileContent, options) {
 
   sourceHost.setSource(getFileContent);
 
-  var pset = Logger.newProfiler("set build files");
+  var pset = Logger.newProfiler("set files");
   var compileService = getCompileService(resOptions.arch);
   var serviceHost = compileService.getHost();
   serviceHost.setFiles(filePaths, resOptions);
@@ -168,12 +168,13 @@ var BP = TSBuild.prototype;
 
 BP.emit = function(filePath, moduleName) {
   Logger.debug("emit file %s", filePath);
-  var options = this.options;
 
+  var options = this.options;
   var compileService = getCompileService(options.arch);
 
-  var sourceFile = compileService.getSourceFile(filePath);
-  if (! sourceFile) throw new Error("File " + filePath + " not found");
+  var serviceHost = compileService.getHost();
+  if (! serviceHost.hasFile(filePath))
+    throw new Error("File " + filePath + " not found");
 
   var useCache = options && options.useCache;
 
