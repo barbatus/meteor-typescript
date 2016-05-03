@@ -36,7 +36,8 @@ LP.isAssert = function() {
 };
 
 LP.newProfiler = function(name) {
-  let profiler = new Profiler(name);
+  var fullName = util.format("%s%s", this.prefix, name);
+  var profiler = new Profiler(fullName);
   if (this.isProfile()) profiler.start();
   return profiler;
 };

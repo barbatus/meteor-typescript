@@ -92,11 +92,15 @@ function TSBuild(filePaths, getFileContent, options) {
 
   sourceHost.setSource(getFileContent);
 
+  var pset = Logger.newProfiler("set build files");
   var compileService = getCompileService(resOptions.arch);
   var serviceHost = compileService.getHost();
   serviceHost.setFiles(filePaths, resOptions);
+  pset.end();
 
+  var pmap = Logger.newProfiler("rebuild map");
   this.rebuildMap = getRebuildMap(filePaths, resOptions);
+  pmap.end();
 }
 
 function rebuildWithNewTypings(typings, options) {

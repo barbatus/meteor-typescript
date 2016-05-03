@@ -13,7 +13,7 @@ function CompileServiceHost(fileCache) {
   this.fileCache = fileCache;
   this.typingsChanged = false;
   this.appId = this.curDir = ts.sys.getCurrentDirectory();
-  this.webArchExp = new RegExp("^web\.");
+  this.webArchExp = new RegExp("^web");
 }
 
 exports.CompileServiceHost = CompileServiceHost;

@@ -157,15 +157,19 @@ function CompileCache(cacheDir, sourceHost) {
 var CCp = CompileCache.prototype = new Cache();
 
 CCp.get = function(filePath, options, compileFn) {
+  var pkey = Logger.newProfiler("CompileCache compileFn");
   var source = this.sourceHost.get(filePath);
   var cacheKey = utils.deepHash(pkgVersion, source, options);
-  var compileResult = this._get(cacheKey);
+  pkey.end();
 
+  var compileResult = this._get(cacheKey);
   if (compileResult) {
     Logger.debug("file %s result is in cache", filePath);
   }
 
+  var pcomp = Logger.newProfiler("CompileCache compileFn");
   var newResult = compileFn(compileResult);
+  pcomp.end();
 
   if (newResult) {
     newResult.hash = cacheKey;
@@ -227,5 +231,5 @@ FCp.isChanged = function(filePath, arch, content) {
   var profile = {filePath: filePath, arch: arch};
   var cacheKey = utils.deepHash(profile);
   var contentHash = utils.deepHash(content);
-  return this._get(cacheKey) != contentHash;
+  return this._get(cacheKey) !== contentHash;
 };
