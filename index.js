@@ -97,69 +97,54 @@ function TSBuild(filePaths, getFileContent, options) {
   var serviceHost = compileService.getHost();
   serviceHost.setFiles(filePaths, resOptions);
   pset.end();
-
-  var pmap = Logger.newProfiler("rebuild map");
-  this.rebuildMap = getRebuildMap(filePaths, resOptions);
-  pmap.end();
 }
 
-function rebuildWithNewTypings(typings, options) {
-  if (! typings) return false;
-
-  var tLen = typings.length;
-  var compileService = getCompileService(options.arch);
-  var serviceHost = compileService.getHost();
-  for (var i = 0; i < tLen; i++) {
-    var path = typings[i];
-    if (serviceHost.isFileChanged(path)) return true;
-  }
-
-  return false;
-}
-
-var RebuildType = {
-  FULL: 1,
-  DIAG: 2
+var RefsType = {
+  NONE: 0,
+  FILES: 1,
+  MODULES: 2,
+  TYPINGS: 3
 };
 
-function getRebuildMap(filePaths, options) {
-  assert.ok(options);
-
-  if (options.useCache === false) return;
-
-  var files = {};
-  var compileService = getCompileService(options.arch);
-  var serviceHost = compileService.getHost();
+function isRefsChanged(serviceHost, filePath, refs) {
+  assert.ok(serviceHost);
 
   if (serviceHost.isTypingsChanged()) {
-    _.each(filePaths, function(filePath) {
-      files[filePath] = RebuildType.FULL;
-    });
-    return files;
+    return RefsType.TYPINGS;
   }
 
-  _.each(filePaths, function(filePath) {
-    if (! serviceHost.isFileChanged(filePath)) {
-      var refs = compileService.getReferences(filePath);
-      if (refs) {
-        files[filePath] = rebuildWithNewTypings(refs.typings, options);
-        if (files[filePath]) {
-          Logger.debug("recompile file %s because typings changed", filePath);
-        };
-
-        var modules = refs.modules;
-        var mLen = modules.length;
-        for (var i = 0; i < mLen; i++) {
-          if (serviceHost.isFileChanged(modules[i])) {
-            files[filePath] = RebuildType.FULL;
-            break;
-          }
-        }
+  function isFilesChanged(files) {
+    var tLen = files.length;
+    for (var i = 0; i < tLen; i++) {
+      var path = files[i];
+      if (serviceHost.isFileChanged(path)) {
+        return true;
       }
     }
-  });
+    return false;
+  }
 
-  return files;
+  if (refs) {
+    var typings = refs.typings;
+    if (isFilesChanged(typings)) {
+      Logger.debug("referenced typings changed in %s", filePath);
+      return RefsType.TYPINGS;
+    }
+
+    var files = refs.files;
+    if (isFilesChanged(files)) {
+      Logger.debug("referenced files changed in %s", filePath);
+      return RefsType.FILES;
+    }
+
+    var modules = refs.modules;
+    if (isFilesChanged(modules)) {
+      Logger.debug("imported module changed in %s", filePath);
+      return RefsType.MODULES;
+    }
+  }
+
+  return RefsType.NONE;
 }
 
 exports.TSBuild = TSBuild;
@@ -187,35 +172,53 @@ BP.emit = function(filePath, moduleName) {
     moduleName: moduleName
   };
 
-  if (useCache === false) {
+  function compile() {
+    var pcomp = Logger.newProfiler("compile " + filePath);
     var result = compileService.compile(filePath, moduleName);
+    pcomp.end();
+    return result;
+  }
+
+  if (useCache === false) {
+    var result = compile();
     compileCache.save(filePath, csOptions, result);
     return result;
   }
 
-  var rebuild = this.rebuildMap[filePath];
+  //var rebuild = this.rebuildMap[filePath];
   var pget = Logger.newProfiler("compileCache get");
   var result = compileCache.get(filePath, csOptions, function(cacheResult) {
     if (! cacheResult) {
       Logger.debug("cache miss: %s", filePath);
-      return compileService.compile(filePath, moduleName);
-    }
-
-    if (rebuild === RebuildType.FULL) {
-      Logger.debug("full rebuild: %s", filePath);
-      return compileService.compile(filePath, moduleName);
+      return compile();
     }
 
     var csResult = createCSResult(cacheResult);
     var tsDiag = csResult.diagnostics;
-    // If file is not changed but contains errors from previous
-    // build, then mark it as needs diagnostics re-evaluation.
-    // This is due to some node modules may become
-    // available in the mean time.
-    if (tsDiag.hasUnresolvedModules()) {
+
+    var prefs = Logger.newProfiler("refs check");
+    var refsChanged = isRefsChanged(serviceHost,
+      filePath, csResult.references);
+    prefs.end();
+
+    // Referenced files have changed, which may need recompilation in some cases.
+    // See https://github.com/Urigo/angular2-meteor/issues/102#issuecomment-191411701
+    if (refsChanged === RefsType.FILES) {
+      Logger.debug("recompile: %s", filePath);
+      return compile();
+    }
+
+    // Diagnostics re-evaluation.
+    // First case: file is not changed but contains unresolved modules
+    // error from previous build (some node modules might have installed).
+    // Second case: dependency modules or typings have changed.
+    var unresolved = tsDiag.hasUnresolvedModules();
+    if (unresolved || refsChanged !== RefsType.NONE) {
       Logger.debug("diagnostics re-evaluation: %s", filePath);
+      var pdiag = Logger.newProfiler("diags update");
       csResult.upDiagnostics(
         compileService.getDiagnostics(filePath));
+      pdiag.end();
       return csResult;
     }
 

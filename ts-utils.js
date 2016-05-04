@@ -53,7 +53,8 @@ function getReferences(sourceFile) {
   }
 
   return {
-    modules: modules.concat(files),
+    files: files,
+    modules: modules,
     typings: typings
   };
 }

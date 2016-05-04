@@ -165,10 +165,7 @@ CCp.get = function(filePath, options, compileFn) {
     Logger.debug("file %s result is in cache", filePath);
   }
 
-  var pcomp = Logger.newProfiler("compileCache compile");
   var newResult = compileFn(compileResult);
-  pcomp.end();
-
   if (newResult) {
     newResult.hash = cacheKey;
     this._save(cacheKey, newResult);
