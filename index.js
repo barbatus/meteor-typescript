@@ -114,6 +114,8 @@ function isRefsChanged(serviceHost, filePath, refs) {
   }
 
   function isFilesChanged(files) {
+    if (! files) return false;
+
     var tLen = files.length;
     for (var i = 0; i < tLen; i++) {
       var path = files[i];
