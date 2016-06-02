@@ -39,6 +39,11 @@ describe("meteor-typescript -> ", function() {
       expect(result.code).not.toBeNull();
     });
 
+    it("don't impose 'use strict' by default", function() {
+      var result = meteorTS.compile(testCodeLine, getOptions());
+      expect(result.code).not.toContain("use strict");
+    });
+
     it("should recognize preset options", function() {
       var result = meteorTS.compile(testCodeLine, getOptions({
         compilerOptions: {

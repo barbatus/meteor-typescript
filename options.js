@@ -55,7 +55,9 @@ function getDefaultCompilerOptions() {
     // especially useful for Angular2.
     emitDecoratorMetadata: true,
     // Support decorators by default.
-    experimentalDecorators: true
+    experimentalDecorators: true,
+    // Don't impose `use strict`
+    noImplicitUseStrict: true
   }
 }
 
