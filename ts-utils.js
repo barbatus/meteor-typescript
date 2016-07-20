@@ -18,7 +18,6 @@ function normalizePath(filePath) {
 
 function prepareSourceMap(sourceMapContent, fileContent, sourceMapPath) {
   var sourceMapJson = JSON.parse(sourceMapContent);
-  sourceMapJson.sourcesContent = [fileContent];
   sourceMapJson.sources = [sourceMapPath];
   return sourceMapJson;
 }

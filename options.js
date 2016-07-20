@@ -69,10 +69,7 @@ exports.getDefaultCompilerOptions = getDefaultCompilerOptions;
 function convertCompilerOptionsOrThrow(options) {
   if (! options) return null;
 
-  var testOptions = {};
-  testOptions.compilerOptions = options;
-  testOptions.files = [];
-  var result = ts.parseJsonConfigFileContent(testOptions);
+  var result = ts.convertCompilerOptionsFromJson(options, "");
 
   if (result.errors && result.errors.length) {
     throw new Error(result.errors[0].messageText);
