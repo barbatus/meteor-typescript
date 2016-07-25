@@ -1,7 +1,7 @@
 "use strict";
 
-var ts = require("typescript");
-var _ = require("underscore");
+const ts = require("typescript");
+const _ = require("underscore");
 
 function presetCompilerOptions(customOptions) {
   if (! customOptions) return;
