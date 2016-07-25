@@ -1,9 +1,10 @@
 "use strict";
 
-var assert = require("assert");
-var assertProps = require("./utils").assertProps;
-var ts = require("typescript");
-var _ = require("underscore");
+const assert = require("assert");
+const ts = require("typescript");
+const _ = require("underscore");
+
+const assertProps = require("./utils").assertProps;
 
 // 1) Normalizes slashes in the file path
 // 2) Removes file extension
@@ -132,14 +133,21 @@ function isTypings(fileName) {
   return ts.fileExtensionIs(fileName, '.d.ts');
 }
 
+function getExcludeRegExp(exclude) {
+  if (! exclude) return exclude;
+
+  return ts.getRegularExpressionForWildcard(exclude, "", "exclude");
+}
+
 exports.ts = {
-  TsDiagnostics: TsDiagnostics,
-  normalizePath: normalizePath,
-  prepareSourceMap: prepareSourceMap,
-  getReferences: getReferences,
-  createDiagnostics: createDiagnostics,
-  hasErrors: hasErrors,
-  flattenDiagnostics: flattenDiagnostics,
-  isSourceMap: isSourceMap,
-  isTypings: isTypings
+  TsDiagnostics,
+  normalizePath,
+  prepareSourceMap,
+  getReferences,
+  createDiagnostics,
+  hasErrors,
+  flattenDiagnostics,
+  isSourceMap,
+  isTypings,
+  getExcludeRegExp
 };

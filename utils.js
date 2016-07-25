@@ -1,10 +1,10 @@
 // Copied from https://github.com/meteor/babel/blob/master/util.js
 
-var fs = require("fs");
-var path = require("path");
-var createHash = require("crypto").createHash;
-var assert = require("assert");
-var _ = require("underscore");
+const fs = require("fs");
+const path = require("path");
+const createHash = require("crypto").createHash;
+const assert = require("assert");
+const _ = require("underscore");
 
 exports.mkdirp = function mkdirp(dir) {
   if (! fs.existsSync(dir)) {

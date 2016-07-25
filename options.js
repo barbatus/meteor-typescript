@@ -37,6 +37,10 @@ function presetCompilerOptions(customOptions) {
   compilerOptions.rootDir = null;
   compilerOptions.sourceRoot = null;
 
+  compilerOptions.typingOptions = {
+    enableAutoDiscovery: true
+  };
+
   return compilerOptions;
 }
 
@@ -45,11 +49,12 @@ exports.presetCompilerOptions = presetCompilerOptions;
 // Default compiler options.
 function getDefaultCompilerOptions() {
   return {
-    target: "ES5",
+    target: "es5",
     module : "commonjs",
     moduleResolution: "node",
     sourceMap: true,
     noResolve: false,
+    lib: ["es5"],
     diagnostics: true,
     // Always emit class metadata,
     // especially useful for Angular2.
@@ -79,3 +84,13 @@ function convertCompilerOptionsOrThrow(options) {
 }
 
 exports.convertCompilerOptionsOrThrow = convertCompilerOptionsOrThrow;
+
+function validateTsConfig(configJson) {
+  var result = ts.parseJsonConfigFileContent(configJson, ts.sys, "");
+
+  if (result.errors && result.errors.length) {
+    throw new Error(result.errors[0].messageText);
+  }
+}
+
+exports.validateTsConfig = validateTsConfig;

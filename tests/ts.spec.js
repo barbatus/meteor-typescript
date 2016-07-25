@@ -14,6 +14,13 @@ describe("meteor-typescript -> ", function() {
     return options;
   }
 
+  describe("testing utils -> ", function() {
+    it("convert exclude wildcard to regular exps", function() {
+      var regExp = new RegExp(meteorTS.getExcludeRegExp(["typings"]));
+      expect(regExp.test('/typings/lib.d.ts')).toEqual(true);
+    });
+  });
+
   describe("testing exports and options -> ", function() {
     var testCodeLine = "export const foo = 'foo'";
 
@@ -86,6 +93,16 @@ describe("meteor-typescript -> ", function() {
         "Valid options are compilerOptions, filePath, moduleName, and typings."));
     });
 
+    it("should validate tsconfig", function() {
+      var test = function() {
+        meteorTS.validateTsConfig({
+          include: "foo"
+        });
+      };
+
+      expect(test).toThrow();
+    });
+
     it("should have isExternal to be true if ES6 modules are used and " +
         "false in case of internal modules", function() {
       var result = meteorTS.compile(testCodeLine, getOptions());
@@ -144,7 +161,7 @@ describe("meteor-typescript -> ", function() {
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
 
-    it("should always include lib.core.d.ts", function() {
+    it("should always include core lib by default", function() {
       var codeLine = "new Object();";
       var result = meteorTS.compile(codeLine, getOptions({
         arch: "web.browser"
@@ -153,7 +170,7 @@ describe("meteor-typescript -> ", function() {
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
 
-    it("should not include lib.d.ts when target arch not web", function() {
+    it("should not include DOM lib by default", function() {
       var codeLine = "new Plugin()";
       var result = meteorTS.compile(codeLine, getOptions({
         arch: "os"
