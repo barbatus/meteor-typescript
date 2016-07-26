@@ -65,7 +65,7 @@ function getDefaultCompilerOptions(arch) {
     noImplicitUseStrict: true
   };
 
-  if (arch && arch.startsWith("web")) {
+  if (/^web/.test(arch)) {
     options.lib.push("dom");
   }
 
