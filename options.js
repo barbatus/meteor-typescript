@@ -47,8 +47,8 @@ function presetCompilerOptions(customOptions) {
 exports.presetCompilerOptions = presetCompilerOptions;
 
 // Default compiler options.
-function getDefaultCompilerOptions() {
-  return {
+function getDefaultCompilerOptions(arch) {
+  var options = {
     target: "es5",
     module : "commonjs",
     moduleResolution: "node",
@@ -63,7 +63,13 @@ function getDefaultCompilerOptions() {
     experimentalDecorators: true,
     // Don't impose `use strict`
     noImplicitUseStrict: true
+  };
+
+  if (arch && arch.startsWith("web")) {
+    options.lib.push("dom");
   }
+
+  return options;
 }
 
 exports.getDefaultCompilerOptions = getDefaultCompilerOptions;

@@ -29,6 +29,11 @@ describe("meteor-typescript -> ", function() {
       expect(result.code).toContain("exports.foo");
     });
 
+    it("default options for the web should contain dom lib", function() {
+      var options = meteorTS.getDefaultOptions("web.ios");
+      expect(options.compilerOptions.lib.indexOf("dom")).not.toEqual(-1);
+    });
+
     it("should throw on wrong option", function() {
       var test = function() {
         meteorTS.compile(testCodeLine, {

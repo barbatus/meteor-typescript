@@ -32,9 +32,9 @@ function setCacheDir(cacheDir) {
 
 exports.setCacheDir = setCacheDir;
 
-function getConvertedDefault() {
+function getConvertedDefault(arch) {
   return convertCompilerOptionsOrThrow(
-    getDefaultCompilerOptions());
+    getDefaultCompilerOptions(arch));
 }
 
 var serviceHost;
@@ -84,7 +84,7 @@ function TSBuild(filePaths, getFileContent, options) {
   if (! resOptions)
     resOptions = {compilerOptions: getConvertedDefault()};
 
-  if (! resOptions.compilerOptions) 
+  if (! resOptions.compilerOptions)
     resOptions.compilerOptions = getConvertedDefault();
 
   resOptions.compilerOptions = presetCompilerOptions(
@@ -311,9 +311,9 @@ exports.validateAndConvertOptions = validateAndConvertOptions;
 
 exports.validateTsConfig = validateTsConfig;
 
-exports.getDefaultOptions = function getDefaultOptions() {
+exports.getDefaultOptions = function getDefaultOptions(arch) {
   return {
-    compilerOptions: getDefaultCompilerOptions()
+    compilerOptions: getDefaultCompilerOptions(arch)
   }
 }
 
