@@ -420,6 +420,18 @@ describe("meteor-typescript -> ", function() {
       expect(result2.code).toContain("newlog");
       expect(result2.code).toContain("te_");
     });
+
+    it("should compile ES6", function() {
+      var options = meteorTS.getDefaultOptions();
+      options.compilerOptions.target = "es6";
+      var code = "for (let target of ['es6']) {}"
+      var build = new TSBuild(["foo18.ts"], function(filePath) {
+        if (filePath === "foo18.ts") return code;
+      }, getOptions(options));
+      var result = build.emit("foo18.ts");
+
+      expect(result.diagnostics.semanticErrors.length).toEqual(0);
+    });
   });
 
   describe("cache profiling -> ", function() {

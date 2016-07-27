@@ -37,6 +37,22 @@ function getConvertedDefault(arch) {
     getDefaultCompilerOptions(arch));
 }
 
+function defaultCompilerOptions(arch, opt) {
+  var defOpt = getDefaultCompilerOptions(arch);
+  var resOpt = opt || defOpt;
+
+  _.defaults(resOpt, defOpt);
+  // Add target to the lib since
+  // if target: "es6" and lib: ["es5"],
+  // if won't compile properly.
+  if (resOpt.target) {
+    resOpt.lib.push(resOpt.target);
+  }
+  resOpt.lib = _.union(resOpt.lib, defOpt.lib);
+
+  return resOpt;
+}
+
 var serviceHost;
 function lazyInit() {
   if (! compileCache) {
@@ -77,15 +93,16 @@ function getCompileService(arch) {
 function TSBuild(filePaths, getFileContent, options) {
   Logger.debug("new build");
 
-  var resOptions = validateAndConvertOptions(options);
+  var arch = options && options.arch;
+  var compilerOptions = options && options.compilerOptions;
+  compilerOptions = defaultCompilerOptions(arch, compilerOptions);
+
+  var resOptions = options || {};
+  resOptions.compilerOptions = compilerOptions;
+
+  resOptions = validateAndConvertOptions(resOptions);
 
   lazyInit();
-
-  if (! resOptions)
-    resOptions = {compilerOptions: getConvertedDefault()};
-
-  if (! resOptions.compilerOptions)
-    resOptions.compilerOptions = getConvertedDefault();
 
   resOptions.compilerOptions = presetCompilerOptions(
     resOptions.compilerOptions);
