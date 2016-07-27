@@ -422,8 +422,11 @@ describe("meteor-typescript -> ", function() {
     });
 
     it("should compile ES6", function() {
-      var options = meteorTS.getDefaultOptions();
-      options.compilerOptions.target = "es6";
+      var options = {
+        compilerOptions: {
+          target: 'ES6'
+        }
+      };
       var code = "for (let target of ['es6']) {}"
       var build = new TSBuild(["foo18.ts"], function(filePath) {
         if (filePath === "foo18.ts") return code;
