@@ -1,13 +1,13 @@
 "use strict";
 
-const ts = require("typescript");
-const _ = require("underscore");
+var ts = require("typescript");
+var _ = require("underscore");
 
-const deepHash = require("./utils").deepHash;
-const sourceHost = require("./files-source-host").sourceHost;
-const tsu = require("./ts-utils").ts;
-const Logger = require("./logger").Logger;
-const StringScriptSnapshot = require("./script-snapshot").ScriptSnapshot;
+var deepHash = require("./utils").deepHash;
+var sourceHost = require("./files-source-host").sourceHost;
+var tsu = require("./ts-utils").ts;
+var Logger = require("./logger").Logger;
+var StringScriptSnapshot = require("./script-snapshot").ScriptSnapshot;
 
 function CompileServiceHost(fileCache) {
   this.files = {};

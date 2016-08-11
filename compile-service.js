@@ -1,12 +1,12 @@
 "use strict";
 
-const assert = require("assert");
-const ts = require("typescript");
-const _ = require("underscore");
+var assert = require("assert");
+var ts = require("typescript");
+var _ = require("underscore");
 
-const sourceHost = require("./files-source-host").sourceHost;
-const tsu = require("./ts-utils").ts;
-const assertProps = require("./utils").assertProps;
+var sourceHost = require("./files-source-host").sourceHost;
+var tsu = require("./ts-utils").ts;
+var assertProps = require("./utils").assertProps;
 
 function CompileService(serviceHost) {
   this.serviceHost = serviceHost;

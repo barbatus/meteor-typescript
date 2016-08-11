@@ -1,13 +1,13 @@
 "use strict";
 
-const ts = require("typescript");
-const _ = require("underscore");
+var ts = require("typescript");
+var _ = require("underscore");
 
-const filesMap = ts.createFileMap();
+var filesMap = ts.createFileMap();
 
 function SourceHost() {}
 
-const SH = SourceHost.prototype;
+var SH = SourceHost.prototype;
 
 SH.setSource = function(fileSource) {
   this.fileSource = fileSource;

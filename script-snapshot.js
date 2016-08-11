@@ -1,8 +1,8 @@
 "use strict";
 
-const ts = require("typescript");
-const jsdiff = require('diff');
-const Logger = require("./logger").Logger;
+var ts = require("typescript");
+var jsdiff = require('diff');
+var Logger = require("./logger").Logger;
 
 function StringScriptSnapshot(text) {
   this.text = text;
@@ -25,7 +25,9 @@ StringScriptSnapshot.prototype.getChangeRange = function(oldSnapshot) {
   if (diffs.length) {
     var ind = 0;
     var changes = [];
-    for (let diff of diffs) {
+    for (var i = 0; i < diffs.length; i++) {
+      var diff = diffs[i];
+
       if (diff.added) {
         changes.push(ts.createTextChangeRange(
           ts.createTextSpan(ind, 0), diff.count));

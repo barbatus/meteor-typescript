@@ -1,16 +1,16 @@
 'use strict';
 
-const path = require("path");
-const fs = require("fs");
-const assert = require("assert");
-const LRU = require("lru-cache");
-const sizeof = require('object-sizeof');
-const random = require("random-js")();
+var path = require("path");
+var fs = require("fs");
+var assert = require("assert");
+var LRU = require("lru-cache");
+var sizeof = require('object-sizeof');
+var random = require("random-js")();
 
-const utils = require("./utils");
-const pkgVersion = require("./package.json").version;
-const globalSourceHost = require("./files-source-host").sourceHost;
-const Logger = require("./logger").Logger;
+var utils = require("./utils");
+var pkgVersion = require("./package.json").version;
+var globalSourceHost = require("./files-source-host").sourceHost;
+var Logger = require("./logger").Logger;
 
 function meteorLocalDir() {
   var cwdDir = process.cwd();
@@ -217,14 +217,14 @@ exports.FileCache = FileCache;
 var FCp = FileCache.prototype = new Cache();
 
 FCp.save = function(filePath, arch, content) {
-  var profile = { filePath, arch };
+  var profile = { filePath: filePath, arch: arch };
   var cacheKey = utils.deepHash(profile);
   var contentHash = utils.deepHash(content);
   this._save(cacheKey, contentHash);
 };
 
 FCp.isChanged = function(filePath, arch, content) {
-  var profile = { filePath, arch };
+  var profile = { filePath: filePath, arch: arch };
   var cacheKey = utils.deepHash(profile);
   var contentHash = utils.deepHash(content);
   return this._get(cacheKey) !== contentHash;

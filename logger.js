@@ -1,13 +1,13 @@
 "use strict";
 
-const util = require("util");
+var util = require("util");
 
 function Logger() {
   this.prefix = "[meteor-typescript]: ";
   this.llevel = process.env.TYPESCRIPT_LOG;
 }
 
-const LP = Logger.prototype;
+var LP = Logger.prototype;
 
 LP.debug = function(format, arg) {
   if (this.isDebug()) {

@@ -1,26 +1,25 @@
 "use strict";
 
-const assert = require("assert");
-const ts = require("typescript");
-const _ = require("underscore");
+var assert = require("assert");
+var ts = require("typescript");
+var _ = require("underscore");
 
-const getDefaultCompilerOptions = require("./options").getDefaultCompilerOptions;
-const convertCompilerOptionsOrThrow = require("./options").convertCompilerOptionsOrThrow;
-const validateTsConfig = require("./options").validateTsConfig;
-const presetCompilerOptions = require("./options").presetCompilerOptions;
-const CompileService = require("./compile-service").CompileService;
-const createCSResult = require("./compile-service").createCSResult;
-const ServiceHost = require("./compile-service-host").CompileServiceHost;
-const sourceHost = require("./files-source-host").sourceHost;
-const CompileCache = require("./cache").CompileCache;
-const FileCache = require("./cache").FileCache;
-const Logger = require("./logger").Logger;
-const deepHash = require("./utils").deepHash;
-const utils = require("./utils");
-const tsu = require("./ts-utils").ts;
+var getDefaultCompilerOptions = require("./options").getDefaultCompilerOptions;
+var convertCompilerOptionsOrThrow = require("./options").convertCompilerOptionsOrThrow;
+var validateTsConfig = require("./options").validateTsConfig;
+var presetCompilerOptions = require("./options").presetCompilerOptions;
+var CompileService = require("./compile-service").CompileService;
+var createCSResult = require("./compile-service").createCSResult;
+var ServiceHost = require("./compile-service-host").CompileServiceHost;
+var sourceHost = require("./files-source-host").sourceHost;
+var CompileCache = require("./cache").CompileCache;
+var FileCache = require("./cache").FileCache;
+var Logger = require("./logger").Logger;
+var deepHash = require("./utils").deepHash;
+var utils = require("./utils");
+var tsu = require("./ts-utils").ts;
 
-var compileCache;
-var fileCache;
+var compileCache, fileCache;
 function setCacheDir(cacheDir) {
   if (compileCache && compileCache.cacheDir === cacheDir) {
     return;
