@@ -36,6 +36,10 @@ function getConvertedDefault(arch) {
     getDefaultCompilerOptions(arch));
 }
 
+function isES6Target(target) {
+  return /es6/i.test(target) || /es2015/i.test(target);
+};
+
 function defaultCompilerOptions(arch, opt) {
   var defOpt = getDefaultCompilerOptions(arch);
   var resOpt = opt || defOpt;
@@ -43,11 +47,18 @@ function defaultCompilerOptions(arch, opt) {
   _.defaults(resOpt, defOpt);
   // Add target to the lib since
   // if target: "es6" and lib: ["es5"],
-  // if won't compile properly.
+  // it won't compile properly.
   if (resOpt.target) {
     resOpt.lib.push(resOpt.target);
   }
   resOpt.lib = _.union(resOpt.lib, defOpt.lib);
+
+  // Impose use strict for ES6 target.
+  if (opt && opt.noImplicitUseStrict !== undefined) {
+    if (isES6Target(resOpt.target)) {
+      resOpt.noImplicitUseStrict = false;
+    }
+  }
 
   return resOpt;
 }

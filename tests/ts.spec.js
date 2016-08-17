@@ -129,6 +129,16 @@ describe("meteor-typescript -> ", function() {
 
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
+
+    it("impose 'use strict' for ES6", function() {
+      var result = meteorTS.compile(testCodeLine, getOptions({
+        compilerOptions: {
+          target: 'ES6'
+        }
+      }));
+
+      expect(result.code).toContain("use strict");
+    });
   });
 
   describe("testing diagnostics and typings -> ", function() {
@@ -182,6 +192,17 @@ describe("meteor-typescript -> ", function() {
       }));
 
       expect(result.diagnostics.semanticErrors.length).toEqual(1);
+    });
+
+    it("should compile ES6", function() {
+      var code = "for (let target of ['es6']) {}"
+      var result = meteorTS.compile(code, getOptions({
+        compilerOptions: {
+          target: 'ES6'
+        }
+      }));
+
+      expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
   });
 
@@ -419,21 +440,6 @@ describe("meteor-typescript -> ", function() {
 
       expect(result2.code).toContain("newlog");
       expect(result2.code).toContain("te_");
-    });
-
-    it("should compile ES6", function() {
-      var options = {
-        compilerOptions: {
-          target: 'ES6'
-        }
-      };
-      var code = "for (let target of ['es6']) {}"
-      var build = new TSBuild(["foo18.ts"], function(filePath) {
-        if (filePath === "foo18.ts") return code;
-      }, getOptions(options));
-      var result = build.emit("foo18.ts");
-
-      expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
   });
 
