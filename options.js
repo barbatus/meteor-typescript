@@ -56,6 +56,7 @@ function getDefaultCompilerOptions(arch) {
     noResolve: false,
     lib: ["es5"],
     diagnostics: true,
+    noEmitHelpers: true,
     // Always emit class metadata,
     // especially useful for Angular2.
     emitDecoratorMetadata: true,

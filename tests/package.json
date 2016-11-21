@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "dependencies": {
+    "@types/jquery": "^2.0.0"
+  },
+  "license": "MIT"
+}

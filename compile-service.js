@@ -4,6 +4,7 @@ var assert = require("assert");
 var ts = require("typescript");
 var _ = require("underscore");
 
+var Logger = require("./logger").Logger;
 var sourceHost = require("./files-source-host").sourceHost;
 var tsu = require("./ts-utils").ts;
 var assertProps = require("./utils").assertProps;
@@ -41,14 +42,19 @@ CP.compile = function(filePath, moduleName) {
     }
   }, this);
 
-  return createCSResult({
+  var checker = this.getTypeChecker();
+  var pcs = Logger.newProfiler("process csresult");
+  var csResult = createCSResult({
     code: code,
     sourceMap: sourceMap,
     version: this.serviceHost.getScriptVersion(filePath),
     isExternal: ts.isExternalModule(sourceFile),
-    references: tsu.getReferences(sourceFile),
+    dependencies: tsu.getDependencies(sourceFile, checker),
     diagnostics: this.getDiagnostics(filePath)
   });
+  pcs.end();
+
+  return csResult;
 };
 
 CP.getHost = function() {
@@ -64,8 +70,13 @@ CP.getSourceFile = function(filePath) {
   return program.getSourceFile(filePath);
 };
 
-CP.getReferences = function(filePath) {
-  return tsu.getReferences(this.getSourceFile(filePath));
+CP.getDependencies = function(filePath) {
+  var checker = this.getTypeChecker();
+  return tsu.getDependencies(this.getSourceFile(filePath), checker);
+};
+
+CP.getTypeChecker = function() {
+  return this.service.getProgram().getTypeChecker();
 };
 
 CP.getDiagnostics = function(filePath) {
@@ -78,7 +89,7 @@ CP.getDiagnostics = function(filePath) {
 function createCSResult(result) {
   assertProps(result, [
     "code", "sourceMap", "version",
-    "isExternal", "references", "diagnostics"
+    "isExternal", "dependencies", "diagnostics"
   ]);
   result.diagnostics = new tsu.TsDiagnostics(
     result.diagnostics);

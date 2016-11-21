@@ -24,39 +24,105 @@ function prepareSourceMap(sourceMapContent, fileContent, sourceMapPath) {
   return sourceMapJson;
 }
 
-function getReferences(sourceFile) {
+/** 
+ * Gets all local modules given sourceFile
+ * uses types from (depends on).
+ * Supports transitivity, i.e.,
+ * if some module (directly imported) re-exports
+ * types from another module,
+ * this another module will be in the output too.
+ */
+function getDepModules(sourceFile, checker) {
   var modules = [];
 
-  // Get resolved modules.
-  if (sourceFile.resolvedModules) {
-    for (var moduleName in sourceFile.resolvedModules) {
-      var module = sourceFile.resolvedModules[moduleName];
-      if (module && module.resolvedFileName) {
-        modules.push(module.resolvedFileName);
-      }
+  function getModulePath(module) {
+    if (! module) return null;
+
+    var decl = module.declarations[0];
+    var sf = decl.getSourceFile();
+    if (sf && ! sf.isDeclarationFile) {
+      return sf.path;
     }
+    return null;
   }
 
-  // Get file references.
-  var typings = [], files = [];
+  if (sourceFile.imports) {
+    var paths = new Set();
+    _.each(sourceFile.imports, function(importName) {
+      var module = checker.getSymbolAtLocation(importName);
+      if (module) {
+        var path = getModulePath(module);
+        if (path) {
+          paths.add(path);
+        }
+        var nodes = checker.getExportsOfModule(module);
+        _.each(nodes, function(node) {
+          if (node.parent && node.parent !== module) {
+            var path = getModulePath(node.parent);
+            if (path) {
+              paths.add(path);
+            }
+            return;
+          }
+
+          // If directly imported module re-uses and exports of a type
+          // from another module, add this module to the dependency as well.
+          var type = checker.getTypeAtLocation(node.declarations[0]);
+          if (type && type.symbol) {
+            var typeModule = type.symbol.parent;
+            if (typeModule !== module) {
+              var path = getModulePath(typeModule);
+              if (path) {
+                paths.add(path);
+              }
+            }
+          }
+        });
+      }
+    });
+    paths.forEach(function(path) {
+      modules.push(path)
+    });
+  }
+
+  return modules;
+}
+
+function getDependencies(sourceFile, typeChecker) {
+  assert.ok(typeChecker);
+
+  var modules = getDepModules(sourceFile, typeChecker);
+
+  // Get references paths.
+  // /// <reference path=".." />
+  var refTypings = [], refFiles = [];
   if (sourceFile.referencedFiles) {
-    var referencedPaths = sourceFile.referencedFiles.map(function(ref) {
+    var refPaths = sourceFile.referencedFiles.map(function(ref) {
       return ref.fileName;
     });
 
-    typings = _.filter(referencedPaths, function(ref) {
+    refTypings = _.filter(refPaths, function(ref) {
       return isTypings(ref);
     });
 
-    files = _.filter(referencedPaths, function(ref) {
+    refFiles = _.filter(refPaths, function(ref) {
       return ! isTypings(ref);
     });
   }
 
+  // Get resolved paths to reference types.
+  /// <reference types=".." />
+  if (sourceFile.resolvedTypeReferenceDirectiveNames) {
+    for (var lib in sourceFile.resolvedTypeReferenceDirectiveNames) {
+      var ref = sourceFile.resolvedTypeReferenceDirectiveNames[lib];
+      refTypings.push(ref.resolvedFileName);
+    }
+  }
+
   return {
-    files: files,
     modules: modules,
-    typings: typings
+    refFiles: refFiles,
+    refTypings: refTypings
   };
 }
 
@@ -144,7 +210,7 @@ exports.ts = {
   TsDiagnostics: TsDiagnostics,
   normalizePath: normalizePath,
   prepareSourceMap: prepareSourceMap,
-  getReferences: getReferences,
+  getDependencies: getDependencies,
   createDiagnostics: createDiagnostics,
   hasErrors: hasErrors,
   flattenDiagnostics: flattenDiagnostics,

@@ -156,13 +156,13 @@ function isRefsChanged(serviceHost, filePath, refs) {
   }
 
   if (refs) {
-    var typings = refs.typings;
+    var typings = refs.refTypings;
     if (isFilesChanged(typings)) {
       Logger.debug("referenced typings changed in %s", filePath);
       return RefsType.TYPINGS;
     }
 
-    var files = refs.files;
+    var files = refs.refFiles;
     if (isFilesChanged(files)) {
       Logger.debug("referenced files changed in %s", filePath);
       return RefsType.FILES;
@@ -216,7 +216,6 @@ BP.emit = function(filePath, moduleName) {
     return result;
   }
 
-  //var rebuild = this.rebuildMap[filePath];
   var pget = Logger.newProfiler("compileCache get");
   var result = compileCache.get(filePath, csOptions, function(cacheResult) {
     if (! cacheResult) {
@@ -229,7 +228,7 @@ BP.emit = function(filePath, moduleName) {
 
     var prefs = Logger.newProfiler("refs check");
     var refsChanged = isRefsChanged(serviceHost,
-      filePath, csResult.references);
+      filePath, csResult.dependencies);
     prefs.end();
 
     // Referenced files have changed, which may need recompilation in some cases.

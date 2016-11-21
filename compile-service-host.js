@@ -12,6 +12,7 @@ var StringScriptSnapshot = require("./script-snapshot").ScriptSnapshot;
 function CompileServiceHost(fileCache) {
   this.files = {};
   this.fileCache = fileCache;
+  this.fileContentMap = new Map();
   this.typingsChanged = false;
   this.appId = this.curDir = ts.sys.getCurrentDirectory();
 }
@@ -117,7 +118,13 @@ SH.getScriptSnapshot = function(filePath) {
     return new StringScriptSnapshot(source);
   }
 
-  var fileContent = ts.sys.readFile(filePath, "utf-8");
+  // Read node_modules files optimistically.
+  var fileContent = this.fileContentMap.get(filePath);
+  if (! fileContent) {
+    fileContent = ts.sys.readFile(filePath, "utf-8");
+    this.fileContentMap.set(filePath, fileContent);
+  }
+
   return fileContent ? new StringScriptSnapshot(fileContent) : null;
 };
 
