@@ -1,5 +1,3 @@
-"use strict";
-
 var assert = require("assert");
 var ts = require("typescript");
 var _ = require("underscore");
@@ -75,7 +73,6 @@ function lazyInit() {
 var serviceMap = {};
 function getCompileService(arch) {
   if (! arch) arch = "global";
-
   if (serviceMap[arch]) return serviceMap[arch];
 
   var serviceHost = new ServiceHost(fileCache);
@@ -124,7 +121,18 @@ function TSBuild(filePaths, getFileContent, options) {
   var pset = Logger.newProfiler("set files");
   var compileService = getCompileService(resOptions.arch);
   var serviceHost = compileService.getHost();
-  serviceHost.setFiles(filePaths, resOptions);
+  if (filePaths) {
+    serviceHost.setFiles(filePaths, resOptions);
+    var typings = [];
+    _.each(filePaths, function (filePath) {
+      typings = typings.concat(
+        compileService.getRefTypings(filePath));
+      if (tsu.isTypings(filePath)) {
+        typings.push(filePath);
+      }
+    });
+    serviceHost.setTypings(typings, resOptions);
+  }
   pset.end();
 }
 

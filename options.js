@@ -1,5 +1,3 @@
-"use strict";
-
 var ts = require("typescript");
 var _ = require("underscore");
 

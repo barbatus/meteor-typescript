@@ -1,4 +1,5 @@
 var ts = require("typescript");
+var fs = require("fs");
 
 var meteorTS = require("../index");
 

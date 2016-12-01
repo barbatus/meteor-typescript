@@ -1,5 +1,3 @@
-"use strict";
-
 var assert = require("assert");
 var ts = require("typescript");
 var _ = require("underscore");
@@ -49,7 +47,7 @@ CP.compile = function(filePath, moduleName) {
     sourceMap: sourceMap,
     version: this.serviceHost.getScriptVersion(filePath),
     isExternal: ts.isExternalModule(sourceFile),
-    dependencies: tsu.getDependencies(sourceFile, checker),
+    dependencies: tsu.getDepsAndRefs(sourceFile, checker),
     diagnostics: this.getDiagnostics(filePath)
   });
   pcs.end();
@@ -70,9 +68,14 @@ CP.getSourceFile = function(filePath) {
   return program.getSourceFile(filePath);
 };
 
-CP.getDependencies = function(filePath) {
+CP.getDepsAndRefs = function(filePath) {
   var checker = this.getTypeChecker();
-  return tsu.getDependencies(this.getSourceFile(filePath), checker);
+  return tsu.getDepsAndRefs(this.getSourceFile(filePath), checker);
+};
+
+CP.getRefTypings = function(filePath) {
+  var refs = tsu.getRefs(this.getSourceFile(filePath));
+  return refs.refTypings;
 };
 
 CP.getTypeChecker = function() {

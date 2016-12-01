@@ -1,5 +1,3 @@
-"use strict";
-
 var ts = require("typescript");
 var jsdiff = require('diff');
 var Logger = require("./logger").Logger;

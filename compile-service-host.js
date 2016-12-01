@@ -1,5 +1,3 @@
-"use strict";
-
 var ts = require("typescript");
 var _ = require("underscore");
 
@@ -23,64 +21,81 @@ var SH = CompileServiceHost.prototype;
 
 SH.setFiles = function(filePaths, options) {
   this.options = options;
-  var typingsChanged = false;
-  var typings = {};
+  this.filePaths = filePaths;
 
+  var arch = options && options.arch;
   _.each(filePaths, function(filePath) {
-    var isTypings = tsu.isTypings(filePath);
-    if (isTypings) typings[filePath] = true;
-
     if (! this.files[filePath]) {
       this.files[filePath] = { version: 0 };
     }
 
-    var arch = options.arch;
     var source = sourceHost.get(filePath);
+    this.files[filePath].changed = false;
     // Use file path with the current dir for the cache
     // to avoid same file names coincidences between apps.
     var fullPath = ts.combinePaths(this.curDir, filePath);
-    var fileChanged = this.fileCache.isChanged(
-      fullPath, arch, source);
-    if (! fileChanged) {
-      this.files[filePath].changed = false;
-    }
-
+    var fileChanged = this.fileCache.isChanged(fullPath, arch, source);
     if (fileChanged) {
       this.files[filePath].version++;
       this.files[filePath].changed = true;
-      if (isTypings) {
-        Logger.debug("declaration file %s changed", filePath);
-        typingsChanged = true;
-      }
       this.fileCache.save(fullPath, arch, source);
       return;
     }
   }, this);
+};
 
-  this.typingsChanged = typingsChanged;
+SH.setTypings = function(typings, options) {
+  var dtsMap = {};
+  var arch = options && options.arch;
+  var typingsChanged = false;
+  for (var i = 0; i < typings.length; i++) {
+    var filePath = typings[i];
+    if (this.hasFile(filePath)) { 
+      dtsMap[filePath] = true;
+      if (this.isFileChanged(filePath)) {
+        Logger.debug("declaration file %s changed", filePath);
+        typingsChanged = true;
+      }
+      continue;
+    }
+    var fullPath = ts.combinePaths(this.curDir, filePath);
+    var source = this.getFile(fullPath);
+    if (source) {
+      dtsMap[filePath] = true;
+      var fileChanged = this.fileCache.isChanged(fullPath, arch, source);
+      if (fileChanged) {
+        this.fileCache.save(fullPath, arch, source);
+        Logger.debug("declaration file %s changed", filePath);
+        typingsChanged = true;
+      }
+    }
+  };
 
   // Investigate if the number of declaration files have changed.
   // In the positive case, we'll need to revaluate diagnostics
   // for all files of specific architecture.
-  if (options && options.arch) {
-    var arch = options.arch;
-    // Check if the typings array differs from the previous value.
-    typingsChanged = this.fileCache.isChanged(this.appId, arch, typings);
-    if (typingsChanged) {
+  if (arch) {
+    // Check if typings map differs from the previous value.
+    var mapChanged = this.fileCache.isChanged(this.appId, arch, dtsMap);
+    if (mapChanged) {
       Logger.debug("typings of %s changed", arch);
-      this.typingsChanged = typingsChanged;
+      typingsChanged = mapChanged;
     }
-    this.fileCache.save(this.appId, arch, typings);
+    this.fileCache.save(this.appId, arch, dtsMap);
   }
-};
+
+  this.typingsChanged = typingsChanged;
+}
 
 SH.isFileChanged = function(filePath) {
-  var file = this.files[filePath];
+  var normPath = sourceHost.normalizePath(filePath);
+  var file = this.files[normPath];
   return file && file.changed;
 };
 
 SH.hasFile = function(filePath) {
-  return !! this.files[filePath];
+  var normPath = sourceHost.normalizePath(filePath);
+  return !! this.files[normPath];
 };
 
 SH.isTypingsChanged = function() {
@@ -108,8 +123,9 @@ SH.getScriptFileNames = function() {
 };
 
 SH.getScriptVersion = function(filePath) {
-  return this.files[filePath] &&
-    this.files[filePath].version.toString();
+  var normPath = sourceHost.normalizePath(filePath);
+  return this.files[normPath] &&
+    this.files[normPath].version.toString();
 };
 
 SH.getScriptSnapshot = function(filePath) {
@@ -118,14 +134,18 @@ SH.getScriptSnapshot = function(filePath) {
     return new StringScriptSnapshot(source);
   }
 
+  var fileContent = this.getFile(filePath);
+  return fileContent ? new StringScriptSnapshot(fileContent) : null;
+};
+
+SH.getFile = function(filePath) {
   // Read node_modules files optimistically.
   var fileContent = this.fileContentMap.get(filePath);
   if (! fileContent) {
     fileContent = ts.sys.readFile(filePath, "utf-8");
     this.fileContentMap.set(filePath, fileContent);
   }
-
-  return fileContent ? new StringScriptSnapshot(fileContent) : null;
+  return fileContent;
 };
 
 SH.getCompilationSettings = function() {

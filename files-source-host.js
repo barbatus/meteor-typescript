@@ -1,7 +1,7 @@
-"use strict";
-
 var ts = require("typescript");
 var _ = require("underscore");
+
+var ROOTED = /^(\/|\\)/;
 
 var filesMap = ts.createFileMap();
 
@@ -25,6 +25,15 @@ SH.get = function(filePath) {
 
   return null;
 };
+
+SH.normalizePath = function(filePath) {
+  if (! filePath) return null;
+  var normPath = filePath.replace(ROOTED, '');
+  if (! filesMap.contains(normPath)) {
+    return normPath;
+  }
+  return filePath;
+}
 
 SH.loadSourceFile = function(filePath) {
   var execPath = ts.sys.getExecutingFilePath();

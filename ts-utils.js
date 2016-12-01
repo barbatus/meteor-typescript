@@ -1,10 +1,9 @@
-"use strict";
-
 var assert = require("assert");
 var ts = require("typescript");
 var _ = require("underscore");
 
 var assertProps = require("./utils").assertProps;
+var Logger = require("./logger").Logger;
 
 // 1) Normalizes slashes in the file path
 // 2) Removes file extension
@@ -25,14 +24,12 @@ function prepareSourceMap(sourceMapContent, fileContent, sourceMapPath) {
 }
 
 /** 
- * Gets all local modules given sourceFile
- * uses types from (depends on).
- * Supports transitivity, i.e.,
- * if some module (directly imported) re-exports
- * types from another module,
- * this another module will be in the output too.
+ * Gets all local modules given sourceFile imports types from.
+ * Supports transitivity, i.e., if some module (directly imported)
+ * re-exports types from another module, this another module
+ * will be in the output too.
  */
-function getDepModules(sourceFile, checker) {
+function getDeps(sourceFile, checker) {
   var modules = [];
 
   function getModulePath(module) {
@@ -88,11 +85,20 @@ function getDepModules(sourceFile, checker) {
   return modules;
 }
 
-function getDependencies(sourceFile, typeChecker) {
+function getDepsAndRefs(sourceFile, typeChecker) {
   assert.ok(typeChecker);
 
-  var modules = getDepModules(sourceFile, typeChecker);
+  var modules = getDeps(sourceFile, typeChecker);
+  var refs = getRefs(sourceFile);
 
+  return {
+    modules: modules,
+    refFiles: refs.refFiles,
+    refTypings: refs.refTypings
+  };
+}
+
+function getRefs(sourceFile) {
   // Get references paths.
   // /// <reference path=".." />
   var refTypings = [], refFiles = [];
@@ -115,12 +121,13 @@ function getDependencies(sourceFile, typeChecker) {
   if (sourceFile.resolvedTypeReferenceDirectiveNames) {
     for (var lib in sourceFile.resolvedTypeReferenceDirectiveNames) {
       var ref = sourceFile.resolvedTypeReferenceDirectiveNames[lib];
-      refTypings.push(ref.resolvedFileName);
+      if (ref) {
+        refTypings.push(ref.resolvedFileName);
+      }
     }
   }
 
   return {
-    modules: modules,
     refFiles: refFiles,
     refTypings: refTypings
   };
@@ -210,7 +217,8 @@ exports.ts = {
   TsDiagnostics: TsDiagnostics,
   normalizePath: normalizePath,
   prepareSourceMap: prepareSourceMap,
-  getDependencies: getDependencies,
+  getDepsAndRefs: getDepsAndRefs,
+  getRefs: getRefs,
   createDiagnostics: createDiagnostics,
   hasErrors: hasErrors,
   flattenDiagnostics: flattenDiagnostics,
