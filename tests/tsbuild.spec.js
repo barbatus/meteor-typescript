@@ -259,7 +259,7 @@ describe("meteor-typescript -> ", function() {
 
       var result = build.emit("foo12.ts");
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
-      expect(result.code).toContain("require('/imports/foo13')");
+      expect(result.code).toMatch(/require\(('|")\/imports\/foo13('|")\)/);
     });
 
     it("paths replacement should not affect other code", function() {
@@ -278,7 +278,7 @@ describe("meteor-typescript -> ", function() {
 
       var result = build.emit("foo13.ts");
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
-      expect(result.code).toContain("require('/imports/foo14')");
+      expect(result.code).toMatch(/require\(('|")\/imports\/foo14('|")\)/);
       expect(result.code).toContain("foo14 = foo");
     });
   });
