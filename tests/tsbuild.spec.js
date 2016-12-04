@@ -242,5 +242,44 @@ describe("meteor-typescript -> ", function() {
       expect(result2.code).toContain("newlog");
       expect(result2.code).toContain("te_");
     });
+
+    it("path mappings should be replaced with rooted paths", function() {
+      var foo12 = "import {foo} from 'foo/foo13'; const foo13 = foo;";
+      var foo13 = testCodeLine;
+
+      var options = meteorTS.getDefaultOptions();
+      options.compilerOptions.baseUrl = ".";
+      options.compilerOptions.paths = {
+        "foo/*": ["imports/*"]
+      };
+      var build = new TSBuild(["foo12.ts", "imports/foo13.ts"], function(filePath) {
+        if (filePath === "foo12.ts") return foo12;
+        if (filePath === "imports/foo13.ts") return foo13;
+      }, options);
+
+      var result = build.emit("foo12.ts");
+      expect(result.diagnostics.semanticErrors.length).toEqual(0);
+      expect(result.code).toContain("require('/imports/foo13')");
+    });
+
+    it("paths replacement should not affect other code", function() {
+      var foo13 = "import {foo} from 'foo'; const foo14 = foo;";
+      var foo14 = testCodeLine;
+
+      var options = meteorTS.getDefaultOptions();
+      options.compilerOptions.baseUrl = ".";
+      options.compilerOptions.paths = {
+        "foo": ["imports/foo14"]
+      };
+      var build = new TSBuild(["foo13.ts", "imports/foo14.ts"], function(filePath) {
+        if (filePath === "foo13.ts") return foo13;
+        if (filePath === "imports/foo14.ts") return foo14;
+      }, options);
+
+      var result = build.emit("foo13.ts");
+      expect(result.diagnostics.semanticErrors.length).toEqual(0);
+      expect(result.code).toContain("require('/imports/foo14')");
+      expect(result.code).toContain("foo14 = foo");
+    });
   });
 });

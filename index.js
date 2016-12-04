@@ -125,8 +125,8 @@ function TSBuild(filePaths, getFileContent, options) {
     serviceHost.setFiles(filePaths, resOptions);
     var typings = [];
     _.each(filePaths, function (filePath) {
-      typings = typings.concat(
-        compileService.getRefTypings(filePath));
+      // typings = typings.concat(
+      //   compileService.getRefTypings(filePath));
       if (tsu.isTypings(filePath)) {
         typings.push(filePath);
       }
@@ -205,7 +205,7 @@ BP.emit = function(filePath, moduleName) {
   // Prepare file options which besides general ones
   // should contain a module name. Omit arch to avoid
   // re-compiling same files aimed for diff arch.
-  var noArchOpts = _.omit(options, 'arch');
+  var noArchOpts = _.omit(options, 'arch', 'useCache');
   var csOptions = {
     options: noArchOpts,
     moduleName: moduleName

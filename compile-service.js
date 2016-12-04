@@ -42,12 +42,14 @@ CP.compile = function(filePath, moduleName) {
 
   var checker = this.getTypeChecker();
   var pcs = Logger.newProfiler("process csresult");
+  var deps = tsu.getDepsAndRefs(sourceFile, checker);
+  var meteorizedCode = this.rootifyPaths(code, deps.mappings); 
   var csResult = createCSResult({
-    code: code,
+    code: meteorizedCode,
     sourceMap: sourceMap,
     version: this.serviceHost.getScriptVersion(filePath),
     isExternal: ts.isExternalModule(sourceFile),
-    dependencies: tsu.getDepsAndRefs(sourceFile, checker),
+    dependencies: deps,
     diagnostics: this.getDiagnostics(filePath)
   });
   pcs.end();
@@ -88,6 +90,37 @@ CP.getDiagnostics = function(filePath) {
     this.service.getSemanticDiagnostics(filePath)
   )
 };
+
+CP.rootifyPaths = function(code, mappings) {
+  function buildPathRegExp(modulePath) {
+    var regExp = new RegExp("(require\\(\"|\')(" + modulePath + ")(\"|\'\\))", "g");
+    return regExp;
+  }
+
+  for (var usedPath in mappings) {
+    var module = mappings[usedPath];
+    var resolvedPath = module.resolvedPath;
+
+    if (module.external) continue;
+
+    // Fix some weird v2.1.1 bug where
+    // LanguageService converts dotted paths
+    // to relative in the code.
+    var regExp = buildPathRegExp(resolvedPath);
+    code = code.replace(regExp, function(match, p1, p2, p3, offset) {
+      return p1 + tsu.getRootedPath(resolvedPath) + p3;
+    });
+
+    // Skip path replacement for dotted paths.
+    if (! usedPath.startsWith(".")) {
+      var regExp = buildPathRegExp(usedPath);
+      code = code.replace(regExp, function(match, p1, p2, p3, offset) {
+        return p1 + tsu.getRootedPath(resolvedPath) + p3;
+      });
+    }
+  }
+  return code;
+}
 
 function createCSResult(result) {
   assertProps(result, [

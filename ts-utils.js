@@ -16,6 +16,13 @@ function normalizePath(filePath) {
     ts.normalizeSlashes(resultName));
 }
 
+function getRootedPath(filePath) {
+  if (ts.getRootLength(filePath) === 0) {
+    return "/" + filePath;
+  }
+  return filePath;
+}
+
 function prepareSourceMap(sourceMapContent, fileContent, sourceMapPath) {
   var sourceMapJson = JSON.parse(sourceMapContent);
   sourceMapJson.sourcesContent = [fileContent];
@@ -90,12 +97,31 @@ function getDepsAndRefs(sourceFile, typeChecker) {
 
   var modules = getDeps(sourceFile, typeChecker);
   var refs = getRefs(sourceFile);
+  var mappings = getMappings(sourceFile);
 
   return {
     modules: modules,
     refFiles: refs.refFiles,
-    refTypings: refs.refTypings
+    refTypings: refs.refTypings,
+    mappings: mappings
   };
+}
+
+function getMappings(sourceFile) {
+  var mappings = {};
+  if (sourceFile.resolvedModules) {
+    for (var modulePath in sourceFile.resolvedModules) {
+      var module = sourceFile.resolvedModules[modulePath];
+      if (module) {
+        mappings[modulePath] = {
+          resolvedPath: ts.removeFileExtension(
+            module.resolvedFileName),
+          external: module.isExternalLibraryImport
+        };
+      }
+    }
+  }
+  return mappings;
 }
 
 function getRefs(sourceFile) {
@@ -224,5 +250,6 @@ exports.ts = {
   flattenDiagnostics: flattenDiagnostics,
   isSourceMap: isSourceMap,
   isTypings: isTypings,
-  getExcludeRegExp: getExcludeRegExp
+  getExcludeRegExp: getExcludeRegExp,
+  getRootedPath: getRootedPath
 };
