@@ -203,25 +203,25 @@ exports.CompileCache = CompileCache;
  * Used to check if a file content has been changed
  * between two successive compilations.
  */
-function FileCache(cacheDir) {
+function FileHashCache(cacheDir) {
   Cache.apply(this);
   this.cacheDir = ensureCacheDir(cacheDir);
 }
 
-FileCache.prototype = new Cache();
+FileHashCache.prototype = new Cache();
 
-exports.FileCache = FileCache;
+exports.FileHashCache = FileHashCache;
 
-var FCp = FileCache.prototype = new Cache();
+var FHCp = FileHashCache.prototype = new Cache();
 
-FCp.save = function(filePath, arch, content) {
+FHCp.save = function(filePath, arch, content) {
   var profile = { filePath: filePath, arch: arch };
   var cacheKey = utils.deepHash(profile);
   var contentHash = utils.deepHash(content);
   this._save(cacheKey, contentHash);
 };
 
-FCp.isChanged = function(filePath, arch, content) {
+FHCp.isChanged = function(filePath, arch, content) {
   var profile = { filePath: filePath, arch: arch };
   var cacheKey = utils.deepHash(profile);
   var contentHash = utils.deepHash(content);

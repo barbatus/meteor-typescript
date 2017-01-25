@@ -125,7 +125,7 @@ function getMappings(sourceFile) {
 }
 
 function getRefs(sourceFile) {
-  // Get references paths.
+  // Collect referenced file paths, e.g.:
   // /// <reference path=".." />
   var refTypings = [], refFiles = [];
   if (sourceFile.referencedFiles) {
@@ -142,8 +142,8 @@ function getRefs(sourceFile) {
     });
   }
 
-  // Get resolved paths to reference types.
-  /// <reference types=".." />
+  // Collect resolved paths to referenced declaration types, e.g.:
+  // /// <reference types=".." />
   if (sourceFile.resolvedTypeReferenceDirectiveNames) {
     for (var lib in sourceFile.resolvedTypeReferenceDirectiveNames) {
       var ref = sourceFile.resolvedTypeReferenceDirectiveNames[lib];

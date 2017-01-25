@@ -23,10 +23,16 @@ SH.setFiles = function(filePaths, options) {
   this.options = options;
   this.filePaths = filePaths;
 
+  var typings = [];
   var arch = options && options.arch;
   _.each(filePaths, function(filePath) {
     if (! this.files[filePath]) {
       this.files[filePath] = { version: 0 };
+    }
+
+    // Collect typings in order to set them later.
+    if (tsu.isTypings(filePath)) {
+      typings.push(filePath);
     }
 
     var source = sourceHost.get(filePath);
@@ -42,6 +48,8 @@ SH.setFiles = function(filePaths, options) {
       return;
     }
   }, this);
+
+  this.setTypings(typings, options);
 };
 
 SH.setTypings = function(typings, options) {

@@ -11,20 +11,20 @@ var createCSResult = require("./compile-service").createCSResult;
 var ServiceHost = require("./compile-service-host").CompileServiceHost;
 var sourceHost = require("./files-source-host").sourceHost;
 var CompileCache = require("./cache").CompileCache;
-var FileCache = require("./cache").FileCache;
+var FileHashCache = require("./cache").FileHashCache;
 var Logger = require("./logger").Logger;
 var deepHash = require("./utils").deepHash;
 var utils = require("./utils");
 var tsu = require("./ts-utils").ts;
 
-var compileCache, fileCache;
+var compileCache, fileHashCache;
 function setCacheDir(cacheDir) {
   if (compileCache && compileCache.cacheDir === cacheDir) {
     return;
   }
 
   compileCache = new CompileCache(cacheDir);
-  fileCache = new FileCache(cacheDir);
+  fileHashCache = new FileHashCache(cacheDir);
 };
 
 exports.setCacheDir = setCacheDir;
@@ -75,7 +75,7 @@ function getCompileService(arch) {
   if (! arch) arch = "global";
   if (serviceMap[arch]) return serviceMap[arch];
 
-  var serviceHost = new ServiceHost(fileCache);
+  var serviceHost = new ServiceHost(fileHashCache);
   var service = new CompileService(serviceHost);
   serviceMap[arch] = service;
   return service;
@@ -123,15 +123,6 @@ function TSBuild(filePaths, getFileContent, options) {
   var serviceHost = compileService.getHost();
   if (filePaths) {
     serviceHost.setFiles(filePaths, resOptions);
-    var typings = [];
-    _.each(filePaths, function (filePath) {
-      // typings = typings.concat(
-      //   compileService.getRefTypings(filePath));
-      if (tsu.isTypings(filePath)) {
-        typings.push(filePath);
-      }
-    });
-    serviceHost.setTypings(typings, resOptions);
   }
   pset.end();
 }

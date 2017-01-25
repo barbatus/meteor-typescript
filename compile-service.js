@@ -103,7 +103,7 @@ CP.rootifyPaths = function(code, mappings) {
 
     if (module.external) continue;
 
-    // Fix some weird v2.1.1 bug where
+    // Fix some weird v2.1.x bug where
     // LanguageService converts dotted paths
     // to relative in the code.
     var regExp = buildPathRegExp(resolvedPath);
