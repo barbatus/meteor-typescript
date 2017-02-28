@@ -80,18 +80,21 @@ describe("meteor-typescript -> ", function() {
 
     it("should update diagnostics when file's module dependency has changed", function() {
       var indexCode = "export * from './foo5'";
-      var importCodeLine = "import {foo} from './index'";
+      var importCodeLine = "import {Meteor} from 'meteor/meteor'; import {foo} from './index';";
 
+      var options = meteorTS.getDefaultOptions();
+      options.compilerOptions.types = ["meteor-typings"];
       var build1 = new TSBuild(["index.ts", "foo5.ts", "foo6.ts"], function(filePath) {
         if (filePath === "index.ts") return indexCode;
         if (filePath === "foo5.ts") return testCodeLine;
         if (filePath === "foo6.ts") return importCodeLine;
-      });
+      }, options);
 
       var result1 = build1.emit("foo6.ts");
 
       expect(result1.diagnostics.semanticErrors.length).toEqual(0);
       // Check if transitivity is handled.
+      expect(result1.dependencies.modules.length).toEqual(2);
       expect(result1.dependencies.modules).toContain('foo5.ts');
       expect(result1.dependencies.modules).toContain('index.ts');
 
@@ -100,7 +103,7 @@ describe("meteor-typescript -> ", function() {
         if (filePath === "index.ts") return indexCode;
         if (filePath === "foo5.ts") return changedCode;
         if (filePath === "foo6.ts") return importCodeLine;
-      });
+      }, options);
 
       var result2 = build2.emit("foo6.ts");
 

@@ -97,11 +97,10 @@ CP.rootifyPaths = function(code, mappings) {
     return regExp;
   }
 
-  for (var usedPath in mappings) {
-    var module = mappings[usedPath];
+  mappings = mappings.filter(module => module.resolved && !module.external);
+  for (var module of mappings) {
+    var usedPath = module.modulePath;
     var resolvedPath = module.resolvedPath;
-
-    if (module.external) continue;
 
     // Fix some weird v2.1.x bug where
     // LanguageService converts dotted paths

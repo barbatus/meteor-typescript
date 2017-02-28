@@ -1,3 +1,5 @@
+'use strict';
+
 var assert = require("assert");
 var ts = require("typescript");
 var _ = require("underscore");
@@ -97,34 +99,115 @@ function getCompileService(arch) {
  *    - arch: Meteor file architecture
  *    - useCache: whether to use cache 
  */
-function TSBuild(filePaths, getFileContent, options) {
-  Logger.debug("new build");
+class TSBuild {
+  constructor(filePaths, getFileContent, options) {
+    Logger.debug("new build");
 
-  var arch = options && options.arch;
-  var compilerOptions = options && options.compilerOptions;
-  compilerOptions = defaultCompilerOptions(arch, compilerOptions);
+    var arch = options && options.arch;
+    var compilerOptions = options && options.compilerOptions;
+    compilerOptions = defaultCompilerOptions(arch, compilerOptions);
 
-  var resOptions = options || {};
-  resOptions.compilerOptions = compilerOptions;
+    var resOptions = options || {};
+    resOptions.compilerOptions = compilerOptions;
 
-  resOptions = validateAndConvertOptions(resOptions);
+    resOptions = validateAndConvertOptions(resOptions);
 
-  lazyInit();
+    lazyInit();
 
-  resOptions.compilerOptions = presetCompilerOptions(
-    resOptions.compilerOptions);
+    resOptions.compilerOptions = presetCompilerOptions(
+      resOptions.compilerOptions);
 
-  this.options = resOptions;
+    this.options = resOptions;
 
-  sourceHost.setSource(getFileContent);
+    sourceHost.setSource(getFileContent);
 
-  var pset = Logger.newProfiler("set files");
-  var compileService = getCompileService(resOptions.arch);
-  var serviceHost = compileService.getHost();
-  if (filePaths) {
-    serviceHost.setFiles(filePaths, resOptions);
+    var pset = Logger.newProfiler("set files");
+    var compileService = getCompileService(resOptions.arch);
+    var serviceHost = compileService.getHost();
+    if (filePaths) {
+      serviceHost.setFiles(filePaths, resOptions);
+    }
+    pset.end();
   }
-  pset.end();
+
+  emit(filePath, moduleName) {
+    Logger.debug("emit file %s", filePath);
+
+    var options = this.options;
+    var compileService = getCompileService(options.arch);
+
+    var serviceHost = compileService.getHost();
+    if (! serviceHost.hasFile(filePath))
+      throw new Error("File " + filePath + " not found");
+
+    var useCache = options && options.useCache;
+
+    // Prepare file options which besides general ones
+    // should contain a module name. Omit arch to avoid
+    // re-compiling same files aimed for diff arch.
+    var noArchOpts = _.omit(options, 'arch', 'useCache');
+    var csOptions = {
+      options: noArchOpts,
+      moduleName: moduleName
+    };
+
+    function compile() {
+      var pcomp = Logger.newProfiler("compile " + filePath);
+      var result = compileService.compile(filePath, moduleName);
+      pcomp.end();
+      return result;
+    }
+
+    if (useCache === false) {
+      var result = compile();
+      compileCache.save(filePath, csOptions, result);
+      return result;
+    }
+
+    var pget = Logger.newProfiler("compileCache get");
+    var result = compileCache.get(filePath, csOptions, function(cacheResult) {
+      if (! cacheResult) {
+        Logger.debug("cache miss: %s", filePath);
+        return compile();
+      }
+
+      var csResult = createCSResult(cacheResult);
+      var tsDiag = csResult.diagnostics;
+
+      var prefs = Logger.newProfiler("refs check");
+      var refsChanged = isRefsChanged(serviceHost,
+        filePath, csResult.dependencies);
+      prefs.end();
+
+      // Referenced files have changed, which may need recompilation in some cases.
+      // See https://github.com/Urigo/angular2-meteor/issues/102#issuecomment-191411701
+      if (refsChanged === RefsType.FILES) {
+        Logger.debug("recompile: %s", filePath);
+        return compile();
+      }
+
+      // Diagnostics re-evaluation.
+      // First case: file is not changed but contains unresolved modules
+      // error from previous build (some node modules might have installed).
+      // Second case: dependency modules or typings have changed.
+      var unresolved = tsDiag.hasUnresolvedModules();
+      if (unresolved || refsChanged !== RefsType.NONE) {
+        Logger.debug("diagnostics re-evaluation: %s", filePath);
+        var pdiag = Logger.newProfiler("diags update");
+        csResult.upDiagnostics(
+          compileService.getDiagnostics(filePath));
+        pdiag.end();
+        return csResult;
+      }
+
+      // Cached result is up to date, no action required.
+      Logger.debug("file from cached: %s", filePath);
+      return null;
+    });
+    pget.end();
+
+    return result;
+  }
 }
 
 var RefsType = {
@@ -178,87 +261,6 @@ function isRefsChanged(serviceHost, filePath, refs) {
 }
 
 exports.TSBuild = TSBuild;
-
-var BP = TSBuild.prototype;
-
-BP.emit = function(filePath, moduleName) {
-  Logger.debug("emit file %s", filePath);
-
-  var options = this.options;
-  var compileService = getCompileService(options.arch);
-
-  var serviceHost = compileService.getHost();
-  if (! serviceHost.hasFile(filePath))
-    throw new Error("File " + filePath + " not found");
-
-  var useCache = options && options.useCache;
-
-  // Prepare file options which besides general ones
-  // should contain a module name. Omit arch to avoid
-  // re-compiling same files aimed for diff arch.
-  var noArchOpts = _.omit(options, 'arch', 'useCache');
-  var csOptions = {
-    options: noArchOpts,
-    moduleName: moduleName
-  };
-
-  function compile() {
-    var pcomp = Logger.newProfiler("compile " + filePath);
-    var result = compileService.compile(filePath, moduleName);
-    pcomp.end();
-    return result;
-  }
-
-  if (useCache === false) {
-    var result = compile();
-    compileCache.save(filePath, csOptions, result);
-    return result;
-  }
-
-  var pget = Logger.newProfiler("compileCache get");
-  var result = compileCache.get(filePath, csOptions, function(cacheResult) {
-    if (! cacheResult) {
-      Logger.debug("cache miss: %s", filePath);
-      return compile();
-    }
-
-    var csResult = createCSResult(cacheResult);
-    var tsDiag = csResult.diagnostics;
-
-    var prefs = Logger.newProfiler("refs check");
-    var refsChanged = isRefsChanged(serviceHost,
-      filePath, csResult.dependencies);
-    prefs.end();
-
-    // Referenced files have changed, which may need recompilation in some cases.
-    // See https://github.com/Urigo/angular2-meteor/issues/102#issuecomment-191411701
-    if (refsChanged === RefsType.FILES) {
-      Logger.debug("recompile: %s", filePath);
-      return compile();
-    }
-
-    // Diagnostics re-evaluation.
-    // First case: file is not changed but contains unresolved modules
-    // error from previous build (some node modules might have installed).
-    // Second case: dependency modules or typings have changed.
-    var unresolved = tsDiag.hasUnresolvedModules();
-    if (unresolved || refsChanged !== RefsType.NONE) {
-      Logger.debug("diagnostics re-evaluation: %s", filePath);
-      var pdiag = Logger.newProfiler("diags update");
-      csResult.upDiagnostics(
-        compileService.getDiagnostics(filePath));
-      pdiag.end();
-      return csResult;
-    }
-
-    // Cached result is up to date, no action required.
-    Logger.debug("file from cached: %s", filePath);
-    return null;
-  });
-  pget.end();
-
-  return result;
-};
 
 exports.compile = function compile(fileContent, options) {
   if (typeof fileContent !== "string") {

@@ -50,11 +50,17 @@ function getDeps(sourceFile, checker) {
     return null;
   }
 
+  function isExternal(module) {
+    var decl = module.declarations[0];
+    var sf = decl.getSourceFile();
+    return sf.isDeclarationFile;
+  }
+
   if (sourceFile.imports) {
     var paths = new Set();
     _.each(sourceFile.imports, function(importName) {
       var module = checker.getSymbolAtLocation(importName);
-      if (module) {
+      if (module && !isExternal(module)) {
         var path = getModulePath(module);
         if (path) {
           paths.add(path);
@@ -108,18 +114,17 @@ function getDepsAndRefs(sourceFile, typeChecker) {
 }
 
 function getMappings(sourceFile) {
-  var mappings = {};
+  var mappings = [];
   if (sourceFile.resolvedModules) {
-    for (var modulePath in sourceFile.resolvedModules) {
-      var module = sourceFile.resolvedModules[modulePath];
-      if (module) {
-        mappings[modulePath] = {
-          resolvedPath: ts.removeFileExtension(
-            module.resolvedFileName),
-          external: module.isExternalLibraryImport
-        };
-      }
-    }
+    var modules = sourceFile.resolvedModules;
+    modules.forEach((module, modulePath) => {
+      mappings.push({
+        modulePath,
+        resolvedPath: module ? ts.removeFileExtension(module.resolvedFileName) : null,
+        external: module ? module.isExternalLibraryImport : false,
+        resolved: !!module
+      });
+    });
   }
   return mappings;
 }
@@ -145,12 +150,12 @@ function getRefs(sourceFile) {
   // Collect resolved paths to referenced declaration types, e.g.:
   // /// <reference types=".." />
   if (sourceFile.resolvedTypeReferenceDirectiveNames) {
-    for (var lib in sourceFile.resolvedTypeReferenceDirectiveNames) {
-      var ref = sourceFile.resolvedTypeReferenceDirectiveNames[lib];
-      if (ref) {
-        refTypings.push(ref.resolvedFileName);
-      }
-    }
+    var modules = sourceFile.resolvedTypeReferenceDirectiveNames;
+    modules.forEach((ref, lib) => {
+      if (! ref) return;
+
+      refTypings.push(ref.resolvedFileName);
+    });
   }
 
   return {
