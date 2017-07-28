@@ -1,3 +1,5 @@
+"use strict";
+
 var ts = require("typescript");
 var _ = require("underscore");
 
@@ -19,14 +21,14 @@ exports.CompileServiceHost = CompileServiceHost;
 
 var SH = CompileServiceHost.prototype;
 
-SH.setFiles = function(filePaths, options) {
+SH.setFiles = function (filePaths, options) {
   this.options = options;
   this.filePaths = filePaths;
 
   var typings = [];
   var arch = options && options.arch;
-  _.each(filePaths, function(filePath) {
-    if (! this.files[filePath]) {
+  _.each(filePaths, function (filePath) {
+    if (!this.files[filePath]) {
       this.files[filePath] = { version: 0 };
     }
 
@@ -52,13 +54,13 @@ SH.setFiles = function(filePaths, options) {
   this.setTypings(typings, options);
 };
 
-SH.setTypings = function(typings, options) {
+SH.setTypings = function (typings, options) {
   var dtsMap = {};
   var arch = options && options.arch;
   var typingsChanged = false;
   for (var i = 0; i < typings.length; i++) {
     var filePath = typings[i];
-    if (this.hasFile(filePath)) { 
+    if (this.hasFile(filePath)) {
       dtsMap[filePath] = true;
       if (this.isFileChanged(filePath)) {
         Logger.debug("declaration file %s changed", filePath);
@@ -93,24 +95,24 @@ SH.setTypings = function(typings, options) {
   }
 
   this.typingsChanged = typingsChanged;
-}
+};
 
-SH.isFileChanged = function(filePath) {
+SH.isFileChanged = function (filePath) {
   var normPath = sourceHost.normalizePath(filePath);
   var file = this.files[normPath];
   return file && file.changed;
 };
 
-SH.hasFile = function(filePath) {
+SH.hasFile = function (filePath) {
   var normPath = sourceHost.normalizePath(filePath);
-  return !! this.files[normPath];
+  return !!this.files[normPath];
 };
 
-SH.isTypingsChanged = function() {
+SH.isTypingsChanged = function () {
   return this.typingsChanged;
 };
 
-SH.getScriptFileNames = function() {
+SH.getScriptFileNames = function () {
   var rootFilePaths = {};
   for (var filePath in this.files) {
     rootFilePaths[filePath] = true;
@@ -120,8 +122,8 @@ SH.getScriptFileNames = function() {
   // to set up typings that should be read from disk.
   var typings = this.options.typings;
   if (typings) {
-    _.each(typings, function(filePath) {
-      if (! rootFilePaths[filePath]) {
+    _.each(typings, function (filePath) {
+      if (!rootFilePaths[filePath]) {
         rootFilePaths[filePath] = true;
       }
     });
@@ -130,13 +132,12 @@ SH.getScriptFileNames = function() {
   return _.keys(rootFilePaths);
 };
 
-SH.getScriptVersion = function(filePath) {
+SH.getScriptVersion = function (filePath) {
   var normPath = sourceHost.normalizePath(filePath);
-  return this.files[normPath] &&
-    this.files[normPath].version.toString();
+  return this.files[normPath] && this.files[normPath].version.toString();
 };
 
-SH.getScriptSnapshot = function(filePath) {
+SH.getScriptSnapshot = function (filePath) {
   var source = sourceHost.get(filePath);
   if (source !== null) {
     return new StringScriptSnapshot(source);
@@ -146,7 +147,7 @@ SH.getScriptSnapshot = function(filePath) {
   return fileContent ? new StringScriptSnapshot(fileContent) : null;
 };
 
-SH.fileExists = function(filePath) {
+SH.fileExists = function (filePath) {
   var normPath = sourceHost.normalizePath(filePath);
   if (this.files[normPath]) return true;
 
@@ -156,32 +157,31 @@ SH.fileExists = function(filePath) {
   return ts.sys.fileExists(filePath);
 };
 
-SH.getFile = function(filePath) {
+SH.getFile = function (filePath) {
   // Read node_modules files optimistically.
   var fileContent = this.fileContentMap.get(filePath);
-  if (! fileContent) {
+  if (!fileContent) {
     fileContent = ts.sys.readFile(filePath, "utf-8");
     this.fileContentMap.set(filePath, fileContent);
   }
   return fileContent;
 };
 
-SH.getCompilationSettings = function() {
+SH.getCompilationSettings = function () {
   return this.options.compilerOptions;
 };
 
-SH.getDefaultLibFileName = function() {
-  var libName = ts.getDefaultLibFilePath(
-    this.getCompilationSettings());
+SH.getDefaultLibFileName = function () {
+  var libName = ts.getDefaultLibFilePath(this.getCompilationSettings());
   return libName;
 };
 
 // Returns empty since we process for simplicity
 // file paths relative to the Meteor app.
-SH.getCurrentDirectory = function() {
+SH.getCurrentDirectory = function () {
   return "";
 };
 
-SH.useCaseSensitiveFileNames = function() {
+SH.useCaseSensitiveFileNames = function () {
   return true;
 };

@@ -1,23 +1,24 @@
 'use strict';
 
-var assert = require("assert");
-var ts = require("typescript");
-var _ = require("underscore");
+import assert from "assert";
+import ts from "typescript";
+import _ from "underscore";
 
-var getDefaultCompilerOptions = require("./options").getDefaultCompilerOptions;
-var convertCompilerOptionsOrThrow = require("./options").convertCompilerOptionsOrThrow;
-var validateTsConfig = require("./options").validateTsConfig;
-var presetCompilerOptions = require("./options").presetCompilerOptions;
-var CompileService = require("./compile-service").CompileService;
-var createCSResult = require("./compile-service").createCSResult;
-var ServiceHost = require("./compile-service-host").CompileServiceHost;
-var sourceHost = require("./files-source-host").sourceHost;
-var CompileCache = require("./cache").CompileCache;
-var FileHashCache = require("./cache").FileHashCache;
-var Logger = require("./logger").Logger;
-var deepHash = require("./utils").deepHash;
-var utils = require("./utils");
-var tsu = require("./ts-utils").ts;
+import {
+  getDefaultCompilerOptions,
+  convertCompilerOptionsOrThrow,
+  validateTsConfig,
+  presetCompilerOptions,
+} from "./options";
+
+import { CompileService, createCSResult } from "./compile-service";
+import { CompileServiceHost as ServiceHost } from "./compile-service-host";
+import { sourceHost } from "./files-source-host";
+import { CompileCache, FileHashCache } from "./cache";
+
+import { Logger } from "./logger";
+import { deepHash } from "./utils";
+import { ts as tsu } from "./ts-utils";
 
 var compileCache, fileHashCache;
 function setCacheDir(cacheDir) {
@@ -313,13 +314,11 @@ function validateAndConvertOptions(options) {
   for (var option in options) {
     if (options.hasOwnProperty(option)) {
       if (validOptions[option] === undefined) {
-        throw new Error("Unknown option: " + option + ".\n" +
-          validOptionsMsg);
+        throw new Error(`Unknown option: ${option}.\n${validOptionsMsg}`);
       }
 
       if (! checkType(options[option], option)) {
-        throw new Error(option + " should be of type " +
-          validOptions[option]);
+        throw new Error(`${option} should be of type ${validOptions[option]}`);
       }
     }
   }

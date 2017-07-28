@@ -1,8 +1,8 @@
 var ts = require("typescript");
 var fs = require("fs");
 
-var meteorTS = require("../index");
-var TSBuild = require("../index").TSBuild;
+var meteorTS = require("../dist/index");
+var TSBuild = require("../dist/index").TSBuild;
 
 describe("meteor-typescript -> ", function() {
   function getOptions(options) {
@@ -83,7 +83,7 @@ describe("meteor-typescript -> ", function() {
       var importCodeLine = "import {Meteor} from 'meteor/meteor'; import {foo} from './index';";
 
       var options = meteorTS.getDefaultOptions();
-      options.compilerOptions.types = ["meteor-typings"];
+      //options.compilerOptions.types = ["meteor-typings"];
       var build1 = new TSBuild(["index.ts", "foo5.ts", "foo6.ts"], function(filePath) {
         if (filePath === "index.ts") return indexCode;
         if (filePath === "foo5.ts") return testCodeLine;
@@ -251,7 +251,7 @@ describe("meteor-typescript -> ", function() {
       var foo13 = testCodeLine;
 
       var options = meteorTS.getDefaultOptions();
-      options.compilerOptions.baseUrl = ".";
+      //options.compilerOptions.baseUrl = ".";
       options.compilerOptions.paths = {
         "foo/*": ["imports/*"]
       };
@@ -270,7 +270,7 @@ describe("meteor-typescript -> ", function() {
       var foo14 = testCodeLine;
 
       var options = meteorTS.getDefaultOptions();
-      options.compilerOptions.baseUrl = ".";
+      //options.compilerOptions.baseUrl = ".";
       options.compilerOptions.paths = {
         "foo": ["imports/foo14"]
       };
@@ -283,6 +283,18 @@ describe("meteor-typescript -> ", function() {
       expect(result.diagnostics.semanticErrors.length).toEqual(0);
       expect(result.code).toMatch(/require\(('|")\/imports\/foo14('|")\)/);
       expect(result.code).toContain("foo14 = foo");
+    });
+
+    it("should resolve module path that starts with /", () => {
+      var file15 = 'import {api} from "/imports/foo16"';
+      var file16 = 'export const api = {}';
+      var build = new TSBuild(["imports/foo15.ts", "imports/foo16.ts"], function(filePath) {
+        if (filePath === "imports/foo15.ts") return file15;
+        if (filePath === "/imports/foo16.ts") return file16;
+      });
+
+      var result = build.emit("imports/foo15.ts");
+      expect(result.diagnostics.semanticErrors.length).toEqual(0);
     });
   });
 });

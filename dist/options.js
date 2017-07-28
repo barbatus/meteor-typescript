@@ -1,8 +1,10 @@
+"use strict";
+
 var ts = require("typescript");
 var _ = require("underscore");
 
 function presetCompilerOptions(customOptions) {
-  if (! customOptions) return;
+  if (!customOptions) return;
 
   var compilerOptions = customOptions;
 
@@ -51,7 +53,7 @@ exports.presetCompilerOptions = presetCompilerOptions;
 function getDefaultCompilerOptions(arch) {
   var options = {
     target: "es5",
-    module : "commonjs",
+    module: "commonjs",
     moduleResolution: "node",
     sourceMap: true,
     noResolve: false,
@@ -80,7 +82,7 @@ exports.getDefaultCompilerOptions = getDefaultCompilerOptions;
 // user-friendly format to enum values used by TypeScript, e.g.:
 // 'system' string converted to ts.ModuleKind.System value.
 function convertCompilerOptionsOrThrow(options) {
-  if (! options) return null;
+  if (!options) return null;
 
   var result = ts.convertCompilerOptionsFromJson(options, "");
 

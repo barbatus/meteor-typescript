@@ -1,10 +1,10 @@
 // Copied from https://github.com/meteor/babel/blob/master/util.js
 
-const fs = require("fs");
-const path = require("path");
-const createHash = require("crypto").createHash;
-const assert = require("assert");
-const _ = require("underscore");
+import fs from "fs";
+import path from "path";
+import { createHash } from "crypto";
+import assert from "assert";
+import _ from "underscore";
 
 exports.mkdirp = function mkdirp(dir) {
   if (! fs.existsSync(dir)) {
@@ -88,6 +88,6 @@ exports.assertProps = function(obj, props) {
 
   var len = props.length;
   for (var i = 0; i < len; i++) {
-    assert.ok(_.has(obj, props[i]));
+    assert.ok(_.has(obj, props[i]), `Prop ${props[i]} not defined`);
   }
 };

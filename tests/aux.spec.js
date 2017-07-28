@@ -2,8 +2,8 @@ var ts = require("typescript");
 var _ = require("underscore");
 var randomstring = require("randomstring");
 
-var meteorTS = require("../index");
-var CompileCache = require("../cache").CompileCache;
+var meteorTS = require("../dist/index");
+var CompileCache = require("../dist/cache").CompileCache;
 
 describe("meteor-typescript -> ", function() {
   function getOptions(options) {

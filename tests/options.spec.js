@@ -1,6 +1,6 @@
 var ts = require("typescript");
 
-var meteorTS = require("../index");
+var meteorTS = require("../dist/index");
 
 describe("meteor-typescript -> ", function() {
   function getOptions(options) {

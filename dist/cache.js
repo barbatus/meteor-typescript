@@ -1,3 +1,5 @@
+"use strict";
+
 var path = require("path");
 var fs = require("fs");
 var assert = require("assert");
@@ -17,11 +19,7 @@ function meteorLocalDir() {
 }
 
 function ensureCacheDir(cacheDir) {
-  cacheDir = path.resolve(
-    cacheDir ||
-    process.env.TYPESCRIPT_CACHE_DIR ||
-    path.join(meteorLocalDir(), ".typescript-cache")
-  );
+  cacheDir = path.resolve(cacheDir || process.env.TYPESCRIPT_CACHE_DIR || path.join(meteorLocalDir(), ".typescript-cache"));
 
   try {
     utils.mkdirp(cacheDir);
@@ -40,7 +38,7 @@ function Cache(length) {
   var maxSize = process.env.TYPESCRIPT_CACHE_SIZE;
   this._cache = new LRU({
     max: maxSize || 1024 * 1024 * 100,
-    length: function(obj, key) {
+    length: function length(obj, key) {
       return sizeof(obj);
     }
   });
@@ -50,28 +48,28 @@ exports.Cache = Cache;
 
 var Cp = Cache.prototype;
 
-Cp._get = function(cacheKey) {
+Cp._get = function (cacheKey) {
   var pget = Logger.newProfiler("cache get");
   var result = this._cache.get(cacheKey);
   pget.end();
 
-  if (! result) {
+  if (!result) {
     var pread = Logger.newProfiler("cache read");
     result = this._readCache(cacheKey);
     pread.end();
   }
 
-  return result; 
+  return result;
 };
 
-Cp._save = function(cacheKey, result) {
+Cp._save = function (cacheKey, result) {
   var psave = Logger.newProfiler("cache save");
   this._cache.set(cacheKey, result);
   this._writeCacheAsync(cacheKey, result);
   psave.end();
 };
 
-Cp._cacheFilename = function(cacheKey) {
+Cp._cacheFilename = function (cacheKey) {
   // We want cacheKeys to be hex so that they work on any FS
   // and never end in .cache.
   if (!/^[a-f0-9]+$/.test(cacheKey)) {
@@ -79,73 +77,70 @@ Cp._cacheFilename = function(cacheKey) {
   }
 
   return path.join(this.cacheDir, cacheKey + ".cache");
-}
+};
 
-Cp._readFileOrNull = function(filename) {
+Cp._readFileOrNull = function (filename) {
   try {
     return fs.readFileSync(filename, "utf8");
   } catch (e) {
-    if (e && e.code === "ENOENT")
-      return null;
+    if (e && e.code === "ENOENT") return null;
     throw e;
   }
-}
+};
 
-Cp._parseJSONOrNull = function(json) {
+Cp._parseJSONOrNull = function (json) {
   try {
     return JSON.parse(json);
   } catch (e) {
-    if (e instanceof SyntaxError)
-      return null;
+    if (e instanceof SyntaxError) return null;
     throw e;
   }
-}
+};
 
 // Returns null if the file does not exist or can't be parsed; otherwise
 // returns the parsed compileResult in the file.
-Cp._readAndParseCompileResultOrNull = function(filename) {
+Cp._readAndParseCompileResultOrNull = function (filename) {
   var content = this._readFileOrNull(filename);
   return this._parseJSONOrNull(content);
-}
+};
 
-Cp._readCache = function(cacheKey) {
-  if (! this.cacheDir) {
+Cp._readCache = function (cacheKey) {
+  if (!this.cacheDir) {
     return null;
   }
 
   var cacheFilename = this._cacheFilename(cacheKey);
   var compileResult = this._readAndParseCompileResultOrNull(cacheFilename);
-  if (! compileResult) {
+  if (!compileResult) {
     return null;
   }
   this._cache.set(cacheKey, compileResult);
 
   return compileResult;
-}
+};
 
 // We want to write the file atomically.
 // But we also don't want to block processing on the file write.
-Cp._writeFileAsync = function(filename, contents) {
+Cp._writeFileAsync = function (filename, contents) {
   var tempFilename = filename + ".tmp." + random.uuid4();
-  fs.writeFile(tempFilename, contents, function(err) {
+  fs.writeFile(tempFilename, contents, function (err) {
     // ignore errors, it's just a cache
     if (err) {
       return;
     }
-    fs.rename(tempFilename, filename, function(err) {
+    fs.rename(tempFilename, filename, function (err) {
       // ignore this error too.
     });
   });
-}
+};
 
-Cp._writeCacheAsync = function(cacheKey, compileResult) {
-  if (! this.cacheDir) return;
+Cp._writeCacheAsync = function (cacheKey, compileResult) {
+  if (!this.cacheDir) return;
 
   var cacheFilename = this._cacheFilename(cacheKey);
   var cacheContents = JSON.stringify(compileResult);
   this._writeFileAsync(cacheFilename, cacheContents);
-}
-
+};
 
 // Cache to save and retrieve compiler results.
 function CompileCache(cacheDir, sourceHost) {
@@ -156,7 +151,7 @@ function CompileCache(cacheDir, sourceHost) {
 
 var CCp = CompileCache.prototype = new Cache();
 
-CCp.get = function(filePath, options, compileFn) {
+CCp.get = function (filePath, options, compileFn) {
   var source = this.sourceHost.get(filePath);
   var cacheKey = utils.deepHash(pkgVersion, source, options);
 
@@ -175,7 +170,7 @@ CCp.get = function(filePath, options, compileFn) {
   return compileResult;
 };
 
-CCp.save = function(filePath, options, compileResult) {
+CCp.save = function (filePath, options, compileResult) {
   var source = this.sourceHost.get(filePath);
   var cacheKey = utils.deepHash(pkgVersion, source, options);
 
@@ -184,20 +179,19 @@ CCp.save = function(filePath, options, compileResult) {
 
 // Check if a compiler result has changed for a file
 // to compile with specific options.
-CCp.resultChanged = function(filePath, options) {
+CCp.resultChanged = function (filePath, options) {
   var source = this.sourceHost.get(filePath);
   var cacheKey = utils.deepHash(pkgVersion, source, options);
   var compileResult = this._cache.get(cacheKey);
 
-  if (! compileResult) {
+  if (!compileResult) {
     compileResult = this._readCache(cacheKey);
   }
 
-  return ! compileResult;
+  return !compileResult;
 };
 
 exports.CompileCache = CompileCache;
-
 
 /**
  * Simple cache that saves file content hashes.
@@ -215,14 +209,14 @@ exports.FileHashCache = FileHashCache;
 
 var FHCp = FileHashCache.prototype = new Cache();
 
-FHCp.save = function(filePath, arch, content) {
+FHCp.save = function (filePath, arch, content) {
   var profile = { filePath: filePath, arch: arch };
   var cacheKey = utils.deepHash(profile);
   var contentHash = utils.deepHash(content);
   this._save(cacheKey, contentHash);
 };
 
-FHCp.isChanged = function(filePath, arch, content) {
+FHCp.isChanged = function (filePath, arch, content) {
   var profile = { filePath: filePath, arch: arch };
   var cacheKey = utils.deepHash(profile);
   var contentHash = utils.deepHash(content);
