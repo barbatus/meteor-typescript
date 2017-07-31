@@ -67,7 +67,7 @@ SH.setTypings = function(typings, options) {
       continue;
     }
     var fullPath = ts.combinePaths(this.curDir, filePath);
-    var source = this.getFile(fullPath);
+    var source = this.readFile(fullPath);
     if (source) {
       dtsMap[filePath] = true;
       var fileChanged = this.fileCache.isChanged(fullPath, arch, source);
@@ -142,9 +142,11 @@ SH.getScriptSnapshot = function(filePath) {
     return new StringScriptSnapshot(source);
   }
 
-  var fileContent = this.getFile(filePath);
+  var fileContent = this.readFile(filePath);
   return fileContent ? new StringScriptSnapshot(fileContent) : null;
 };
+
+SH.readDirectory = ts.sys.readDirectory;
 
 SH.fileExists = function(filePath) {
   var normPath = sourceHost.normalizePath(filePath);
@@ -156,7 +158,7 @@ SH.fileExists = function(filePath) {
   return ts.sys.fileExists(filePath);
 };
 
-SH.getFile = function(filePath) {
+SH.readFile = function(filePath) {
   // Read node_modules files optimistically.
   var fileContent = this.fileContentMap.get(filePath);
   if (! fileContent) {

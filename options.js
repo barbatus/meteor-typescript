@@ -35,13 +35,6 @@ function presetCompilerOptions(customOptions) {
   compilerOptions.rootDir = null;
   compilerOptions.sourceRoot = null;
 
-  compilerOptions.typingOptions = {
-    enableAutoDiscovery: true
-  };
-
-  compilerOptions.baseUrl = ".";
-  compilerOptions.rootDirs = ["."];
-
   return compilerOptions;
 }
 
@@ -64,7 +57,9 @@ function getDefaultCompilerOptions(arch) {
     // Support decorators by default.
     experimentalDecorators: true,
     // Don't impose `use strict`
-    noImplicitUseStrict: true
+    noImplicitUseStrict: true,
+    baseUrl: ".",
+    rootDirs: ["."],
   };
 
   if (/^web/.test(arch)) {

@@ -11,7 +11,7 @@ import {
   presetCompilerOptions,
 } from "./options";
 
-import { CompileService, createCSResult } from "./compile-service";
+import CompileService, { createCSResult } from "./compile-service";
 import { CompileServiceHost as ServiceHost } from "./compile-service-host";
 import { sourceHost } from "./files-source-host";
 import { CompileCache, FileHashCache } from "./cache";
@@ -20,17 +20,15 @@ import { Logger } from "./logger";
 import { deepHash } from "./utils";
 import { ts as tsu } from "./ts-utils";
 
-var compileCache, fileHashCache;
-function setCacheDir(cacheDir) {
+let compileCache, fileHashCache;
+export function setCacheDir(cacheDir) {
   if (compileCache && compileCache.cacheDir === cacheDir) {
     return;
   }
 
   compileCache = new CompileCache(cacheDir);
   fileHashCache = new FileHashCache(cacheDir);
-};
-
-exports.setCacheDir = setCacheDir;
+}
 
 function getConvertedDefault(arch) {
   return convertCompilerOptionsOrThrow(
@@ -39,11 +37,11 @@ function getConvertedDefault(arch) {
 
 function isES6Target(target) {
   return /es6/i.test(target) || /es2015/i.test(target);
-};
+}
 
-function defaultCompilerOptions(arch, opt) {
-  var defOpt = getDefaultCompilerOptions(arch);
-  var resOpt = opt || defOpt;
+function evalCompilerOptions(arch, opt) {
+  const defOpt = getDefaultCompilerOptions(arch);
+  const resOpt = opt || defOpt;
 
   _.defaults(resOpt, defOpt);
   // Add target to the lib since
@@ -64,7 +62,6 @@ function defaultCompilerOptions(arch, opt) {
   return resOpt;
 }
 
-var serviceHost;
 function lazyInit() {
   if (! compileCache) {
     setCacheDir();
@@ -73,13 +70,13 @@ function lazyInit() {
 
 // A map of TypeScript Language Services
 // per each Meteor architecture.
-var serviceMap = {};
+const serviceMap = {};
 function getCompileService(arch) {
   if (! arch) arch = "global";
   if (serviceMap[arch]) return serviceMap[arch];
 
-  var serviceHost = new ServiceHost(fileHashCache);
-  var service = new CompileService(serviceHost);
+  const serviceHost = new ServiceHost(fileHashCache);
+  const service = new CompileService(serviceHost);
   serviceMap[arch] = service;
   return service;
 }
@@ -100,89 +97,88 @@ function getCompileService(arch) {
  *    - arch: Meteor file architecture
  *    - useCache: whether to use cache 
  */
-class TSBuild {
-  constructor(filePaths, getFileContent, options) {
+export class TSBuild {
+  constructor(filePaths, getFileContent, options = {}) {
     Logger.debug("new build");
 
-    var arch = options && options.arch;
-    var compilerOptions = options && options.compilerOptions;
-    compilerOptions = defaultCompilerOptions(arch, compilerOptions);
-
-    var resOptions = options || {};
-    resOptions.compilerOptions = compilerOptions;
-
+    const compilerOptions = evalCompilerOptions(
+      options.arch, options.compilerOptions);
+    let resOptions = { ...options, compilerOptions };
     resOptions = validateAndConvertOptions(resOptions);
+    resOptions.compilerOptions = presetCompilerOptions(
+      resOptions.compilerOptions);
+    this.options = resOptions;
 
     lazyInit();
 
-    resOptions.compilerOptions = presetCompilerOptions(
-      resOptions.compilerOptions);
-
-    this.options = resOptions;
-
     sourceHost.setSource(getFileContent);
 
-    var pset = Logger.newProfiler("set files");
-    var compileService = getCompileService(resOptions.arch);
-    var serviceHost = compileService.getHost();
-    if (filePaths) {
-      serviceHost.setFiles(filePaths, resOptions);
-    }
+    const pset = Logger.newProfiler("set files");
+    const compileService = getCompileService(resOptions.arch);
+    const serviceHost = compileService.getHost();
+    serviceHost.setFiles(filePaths, resOptions);
     pset.end();
+
+    const prefs = Logger.newProfiler("refs eval");
+    this.refsChangeMap = evalRefsChangeMap(filePaths,
+      (filePath) => serviceHost.isFileChanged(filePath),
+      (filePath) => {
+        const csResult = compileCache.getResult(filePath,
+          this.getFileOptions(filePath));
+        return csResult ? csResult.dependencies : null;
+      });
+    prefs.end();
   }
 
-  emit(filePath, moduleName) {
+  getFileOptions(filePath) {
+    // Omit arch to avoid re-compiling same files aimed for diff arch.
+    // Prepare file options which besides general ones
+    // should contain a module name.
+    const options = _.omit(this.options, 'arch', 'useCache');
+    const module = options.compilerOptions.module;
+    const moduleName = module === 'none' ? null :
+      ts.removeFileExtension(filePath);
+    return { options, moduleName };
+  }
+
+  emit(filePath) {
     Logger.debug("emit file %s", filePath);
 
-    var options = this.options;
-    var compileService = getCompileService(options.arch);
+    const options = this.options;
+    const compileService = getCompileService(options.arch);
 
-    var serviceHost = compileService.getHost();
-    if (! serviceHost.hasFile(filePath))
-      throw new Error("File " + filePath + " not found");
+    const serviceHost = compileService.getHost();
+    if (! serviceHost.hasFile(filePath)) {
+      throw new Error(`File ${filePath} not found`);
+    }
 
-    var useCache = options && options.useCache;
-
-    // Prepare file options which besides general ones
-    // should contain a module name. Omit arch to avoid
-    // re-compiling same files aimed for diff arch.
-    var noArchOpts = _.omit(options, 'arch', 'useCache');
-    var csOptions = {
-      options: noArchOpts,
-      moduleName: moduleName
-    };
+    const csOptions = this.getFileOptions(filePath);
 
     function compile() {
-      var pcomp = Logger.newProfiler("compile " + filePath);
-      var result = compileService.compile(filePath, moduleName);
+      const pcomp = Logger.newProfiler(`compile ${filePath}`);
+      const result = compileService.compile(filePath, csOptions.moduleName);
       pcomp.end();
       return result;
     }
 
+    const useCache = options.useCache;
     if (useCache === false) {
-      var result = compile();
-      compileCache.save(filePath, csOptions, result);
-      return result;
+      return compile();
     }
 
-    var pget = Logger.newProfiler("compileCache get");
-    var result = compileCache.get(filePath, csOptions, function(cacheResult) {
+    const isTypingsChanged = serviceHost.isTypingsChanged();
+    const pget = Logger.newProfiler("compileCache get");
+    const result = compileCache.get(filePath, csOptions, (cacheResult) => {
       if (! cacheResult) {
         Logger.debug("cache miss: %s", filePath);
         return compile();
       }
 
-      var csResult = createCSResult(cacheResult);
-      var tsDiag = csResult.diagnostics;
-
-      var prefs = Logger.newProfiler("refs check");
-      var refsChanged = isRefsChanged(serviceHost,
-        filePath, csResult.dependencies);
-      prefs.end();
+      const refsChange = this.refsChangeMap[filePath];
 
       // Referenced files have changed, which may need recompilation in some cases.
       // See https://github.com/Urigo/angular2-meteor/issues/102#issuecomment-191411701
-      if (refsChanged === RefsType.FILES) {
+      if (refsChange === RefsChangeType.FILES) {
         Logger.debug("recompile: %s", filePath);
         return compile();
       }
@@ -191,10 +187,12 @@ class TSBuild {
       // First case: file is not changed but contains unresolved modules
       // error from previous build (some node modules might have installed).
       // Second case: dependency modules or typings have changed.
-      var unresolved = tsDiag.hasUnresolvedModules();
-      if (unresolved || refsChanged !== RefsType.NONE) {
+      const csResult = createCSResult(cacheResult);
+      const tsDiag = csResult.diagnostics;
+      const unresolved = tsDiag.hasUnresolvedModules();
+      if (unresolved || refsChange !== RefsChangeType.NONE || isTypingsChanged) {
         Logger.debug("diagnostics re-evaluation: %s", filePath);
-        var pdiag = Logger.newProfiler("diags update");
+        const pdiag = Logger.newProfiler("diags update");
         csResult.upDiagnostics(
           compileService.getDiagnostics(filePath));
         pdiag.end();
@@ -211,27 +209,64 @@ class TSBuild {
   }
 }
 
-var RefsType = {
+const RefsChangeType = {
   NONE: 0,
   FILES: 1,
   MODULES: 2,
-  TYPINGS: 3
+  TYPINGS: 3,
 };
 
-function isRefsChanged(serviceHost, filePath, refs) {
-  assert.ok(serviceHost);
+function evalRefsChangeMap(filePaths, isFileChanged, getRefs) {
+  const refsChangeMap = {};
+  filePaths.forEach((filePath) => {
+    if (refsChangeMap[filePath]) return;
+    refsChangeMap[filePath] = evalRefsChange(filePath,
+      isFileChanged, getRefs, refsChangeMap);
+    Logger.assert("set ref changes: %s %s", filePath, refsChangeMap[filePath]);
+  });
+  return refsChangeMap;
+}
 
-  if (serviceHost.isTypingsChanged()) {
-    return RefsType.TYPINGS;
+function evalRefsChange(filePath, isFileChanged, getRefs, refsChangeMap, depth = 0) {
+  // Depath of deps analysis.
+  if (depth >= 2) {
+    return RefsChangeType.NONE;
   }
 
+  const refs = getRefs(filePath);
+  if (! refs) {
+    refsChangeMap[filePath] = RefsChangeType.NONE;
+    return RefsChangeType.NONE;
+  }
+
+  const refsChange = isRefsChanged(filePath, isFileChanged, refs);
+  if (refsChange !== RefsChangeType.NONE) {
+    refsChangeMap[filePath] = refsChange;
+    return refsChange;
+  }
+
+  const modules = refs.modules;
+  for (const mPath of modules) {
+    let result = refsChangeMap[mPath];
+    if (result === undefined) {
+      result = evalRefsChange(mPath, isFileChanged, getRefs, refsChangeMap, ++depth);
+    }
+    if (result !== RefsChangeType.NONE) {
+      refsChangeMap[filePath] = RefsChangeType.MODULES;
+      return RefsChangeType.MODULES;
+    }
+  }
+  refsChangeMap[filePath] = RefsChangeType.NONE;
+  return RefsChangeType.NONE;
+}
+
+function isRefsChanged(filePath, isFileChanged, refs) {
   function isFilesChanged(files) {
     if (! files) return false;
 
-    var tLen = files.length;
-    for (var i = 0; i < tLen; i++) {
-      var path = files[i];
-      if (serviceHost.isFileChanged(path)) {
+    const tLen = files.length;
+    for (let i = 0; i < tLen; i++) {
+      if (isFileChanged(files[i])) {
         return true;
       }
     }
@@ -239,53 +274,48 @@ function isRefsChanged(serviceHost, filePath, refs) {
   }
 
   if (refs) {
-    var typings = refs.refTypings;
+    const typings = refs.refTypings;
     if (isFilesChanged(typings)) {
       Logger.debug("referenced typings changed in %s", filePath);
-      return RefsType.TYPINGS;
+      return RefsChangeType.TYPINGS;
     }
 
-    var files = refs.refFiles;
+    const files = refs.refFiles;
     if (isFilesChanged(files)) {
       Logger.debug("referenced files changed in %s", filePath);
-      return RefsType.FILES;
+      return RefsChangeType.FILES;
     }
 
-    var modules = refs.modules;
+    const modules = refs.modules;
     if (isFilesChanged(modules)) {
       Logger.debug("imported module changed in %s", filePath);
-      return RefsType.MODULES;
+      return RefsChangeType.MODULES;
     }
   }
 
-  return RefsType.NONE;
+  return RefsChangeType.NONE;
 }
 
-exports.TSBuild = TSBuild;
-
-exports.compile = function compile(fileContent, options) {
+export function compile(fileContent, options = {}) {
   if (typeof fileContent !== "string") {
     throw new Error("fileContent should be a string");
   }
 
-  var optPath = options && options.filePath;
-  var moduleName = options && options.moduleName;
-
+  let optPath = options.filePath;
   if (! optPath) {
     optPath = deepHash(fileContent, options);
-    var tsx = (options && options.compilerOptions && 
-      options.compilerOptions.jsx);
+    const tsx = options.compilerOptions && options.compilerOptions.jsx;
     optPath += tsx ? ".tsx" : ".ts";
   }
 
-  var getFileContent = function(filePath) {
+  const getFileContent = (filePath) => {
     if (filePath === optPath) {
       return fileContent;
     }
-  }
+  };
 
-  var newBuild = new TSBuild([optPath], getFileContent, options);
-  return newBuild.emit(optPath, moduleName);
+  const newBuild = new TSBuild([optPath], getFileContent, options);
+  return newBuild.emit(optPath);
 };
 
 var validOptions = {
@@ -293,13 +323,12 @@ var validOptions = {
   // Next three to be used mainly
   // in the compile method above.
   "filePath": "String",
-  "moduleName": "String",
   "typings": "Array",
   "arch": "String",
   "useCache": "Boolean"
 };
 var validOptionsMsg = "Valid options are " +
-  "compilerOptions, filePath, moduleName, and typings.";
+  "compilerOptions, filePath, and typings.";
 
 function checkType(option, optionName) {
   if (! option) return true;
@@ -307,11 +336,11 @@ function checkType(option, optionName) {
   return option.constructor.name === validOptions[optionName];
 }
 
-function validateAndConvertOptions(options) {
+export function validateAndConvertOptions(options) {
   if (! options) return null;
 
   // Validate top level options.
-  for (var option in options) {
+  for (const option in options) {
     if (options.hasOwnProperty(option)) {
       if (validOptions[option] === undefined) {
         throw new Error(`Unknown option: ${option}.\n${validOptionsMsg}`);
@@ -323,7 +352,7 @@ function validateAndConvertOptions(options) {
     }
   }
 
-  var resOptions = _.clone(options);
+  const resOptions = _.clone(options);
   // Validate and convert compilerOptions.
   if (options.compilerOptions) {
     resOptions.compilerOptions = convertCompilerOptionsOrThrow(
@@ -333,14 +362,12 @@ function validateAndConvertOptions(options) {
   return resOptions;
 }
 
-exports.validateAndConvertOptions = validateAndConvertOptions;
+export function getDefaultOptions(arch) {
+  return {
+    compilerOptions: getDefaultCompilerOptions(arch),
+  };
+}
 
 exports.validateTsConfig = validateTsConfig;
-
-exports.getDefaultOptions = function getDefaultOptions(arch) {
-  return {
-    compilerOptions: getDefaultCompilerOptions(arch)
-  }
-}
 
 exports.getExcludeRegExp = tsu.getExcludeRegExp;

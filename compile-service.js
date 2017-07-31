@@ -1,127 +1,126 @@
-var assert = require("assert");
-var ts = require("typescript");
-var _ = require("underscore");
+import assert from "assert";
+import ts from "typescript";
+import _ from "underscore";
 
-var Logger = require("./logger").Logger;
-var sourceHost = require("./files-source-host").sourceHost;
-var tsu = require("./ts-utils").ts;
-var assertProps = require("./utils").assertProps;
+import { Logger } from "./logger";
+import { sourceHost } from "./files-source-host";
+import { ts as tsu } from "./ts-utils";
+import { assertProps } from "./utils";
 
-function CompileService(serviceHost) {
-  this.serviceHost = serviceHost;
-  this.service = ts.createLanguageService(serviceHost);
-}
-
-exports.CompileService = CompileService;
-
-var CP = CompileService.prototype;
-
-CP.compile = function(filePath, moduleName) {
-  var sourceFile = this.getSourceFile(filePath);
-  assert.ok(sourceFile);
-
-  if (moduleName) {
-    sourceFile.moduleName = moduleName;
+export default class CompileService {
+  constructor(serviceHost) {
+    this.serviceHost = serviceHost;
+    this.service = ts.createLanguageService(serviceHost);
   }
 
-  var result = this.service.getEmitOutput(filePath);
+  compile(filePath, moduleName) {
+    const sourceFile = this.getSourceFile(filePath);
+    assert.ok(sourceFile);
 
-  var code, sourceMap;
-  _.each(result.outputFiles, function(file) {
-    if (tsu.normalizePath(filePath) !==
-          tsu.normalizePath(file.name)) return;
-
-    var text = file.text;
-    if (tsu.isSourceMap(file.name)) {
-      var source = sourceHost.get(filePath);
-      sourceMap = tsu.prepareSourceMap(text, source, filePath);
-    } else {
-      code = text;
+    if (moduleName) {
+      sourceFile.moduleName = moduleName;
     }
-  }, this);
 
-  var checker = this.getTypeChecker();
-  var pcs = Logger.newProfiler("process csresult");
-  var deps = tsu.getDepsAndRefs(sourceFile, checker);
-  var meteorizedCode = this.rootifyPaths(code, deps.mappings); 
-  var csResult = createCSResult({
-    code: meteorizedCode,
-    sourceMap: sourceMap,
-    version: this.serviceHost.getScriptVersion(filePath),
-    isExternal: ts.isExternalModule(sourceFile),
-    dependencies: deps,
-    diagnostics: this.getDiagnostics(filePath)
-  });
-  pcs.end();
+    const result = this.service.getEmitOutput(filePath);
 
-  return csResult;
-};
+    let code, sourceMap;
+    _.each(result.outputFiles, function(file) {
+      if (tsu.normalizePath(filePath) !==
+            tsu.normalizePath(file.name)) return;
 
-CP.getHost = function() {
-  return this.serviceHost;
-};
+      const text = file.text;
+      if (tsu.isSourceMap(file.name)) {
+        const source = sourceHost.get(filePath);
+        sourceMap = tsu.prepareSourceMap(text, source, filePath);
+      } else {
+        code = text;
+      }
+    }, this);
 
-CP.getDocRegistry = function() {
-  return this.registry;
-}
+    const checker = this.getTypeChecker();
+    const pcs = Logger.newProfiler("process csresult");
+    const deps = tsu.getDepsAndRefs(sourceFile, checker);
+    const meteorizedCode = this.rootifyPaths(code, deps.mappings); 
+    const csResult = createCSResult({
+      code: meteorizedCode,
+      sourceMap,
+      version: this.serviceHost.getScriptVersion(filePath),
+      isExternal: ts.isExternalModule(sourceFile),
+      dependencies: deps,
+      diagnostics: this.getDiagnostics(filePath)
+    });
+    pcs.end();
 
-CP.getSourceFile = function(filePath) {
-  var program = this.service.getProgram();
-  return program.getSourceFile(filePath);
-};
-
-CP.getDepsAndRefs = function(filePath) {
-  var checker = this.getTypeChecker();
-  return tsu.getDepsAndRefs(this.getSourceFile(filePath), checker);
-};
-
-CP.getRefTypings = function(filePath) {
-  var refs = tsu.getRefs(this.getSourceFile(filePath));
-  return refs.refTypings;
-};
-
-CP.getTypeChecker = function() {
-  return this.service.getProgram().getTypeChecker();
-};
-
-CP.getDiagnostics = function(filePath) {
-  return tsu.createDiagnostics(
-    this.service.getSyntacticDiagnostics(filePath),
-    this.service.getSemanticDiagnostics(filePath)
-  )
-};
-
-CP.rootifyPaths = function(code, mappings) {
-  function buildPathRegExp(modulePath) {
-    var regExp = new RegExp("(require\\(\"|\')(" + modulePath + ")(\"|\'\\))", "g");
-    return regExp;
+    return csResult;
   }
 
-  mappings = mappings.filter(module => module.resolved && !module.external);
-  for (var module of mappings) {
-    var usedPath = module.modulePath;
-    var resolvedPath = module.resolvedPath;
+  getHost() {
+    return this.serviceHost;
+  }
 
-    // Fix some weird v2.1.x bug where
-    // LanguageService converts dotted paths
-    // to relative in the code.
-    var regExp = buildPathRegExp(resolvedPath);
-    code = code.replace(regExp, function(match, p1, p2, p3, offset) {
-      return p1 + tsu.getRootedPath(resolvedPath) + p3;
-    });
+  getDocRegistry() {
+    return this.registry;
+  }
 
-    // Skip path replacement for dotted paths.
-    if (! usedPath.startsWith(".")) {
-      var regExp = buildPathRegExp(usedPath);
+  getSourceFile(filePath) {
+    const program = this.service.getProgram();
+    return program.getSourceFile(filePath);
+  }
+
+  getDepsAndRefs(filePath) {
+    const checker = this.getTypeChecker();
+    return tsu.getDepsAndRefs(this.getSourceFile(filePath), checker);
+  }
+
+  getRefTypings(filePath) {
+    const refs = tsu.getRefs(this.getSourceFile(filePath));
+    return refs.refTypings;
+  }
+
+  getTypeChecker() {
+    return this.service.getProgram().getTypeChecker();
+  }
+
+  getDiagnostics(filePath) {
+    return tsu.createDiagnostics(
+      this.service.getSyntacticDiagnostics(filePath),
+      this.service.getSemanticDiagnostics(filePath)
+    );
+  }
+
+  rootifyPaths(code, mappings) {
+    function buildPathRegExp(modulePath) {
+      const regExp = new RegExp("(require\\(\"|\')(" + modulePath + ")(\"|\'\\))", "g");
+      return regExp;
+    }
+
+    mappings = mappings.filter(module => module.resolved && !module.external);
+    Logger.assert("process mappings %s", mappings.map((module) => module.resolvedPath));
+    for (const module of mappings) {
+      const usedPath = module.modulePath;
+      const resolvedPath = module.resolvedPath;
+
+      // Fix some weird v2.1.x bug where
+      // LanguageService converts dotted paths
+      // to relative in the code.
+      const regExp = buildPathRegExp(resolvedPath);
       code = code.replace(regExp, function(match, p1, p2, p3, offset) {
         return p1 + tsu.getRootedPath(resolvedPath) + p3;
       });
+
+      // Skip path replacement for dotted paths.
+      if (! usedPath.startsWith(".")) {
+        const regExp = buildPathRegExp(usedPath);
+        code = code.replace(regExp, function(match, p1, p2, p3, offset) {
+          return p1 + tsu.getRootedPath(resolvedPath) + p3;
+        });
+      }
     }
+    return code;
   }
-  return code;
 }
 
-function createCSResult(result) {
+export function createCSResult(result) {
   assertProps(result, [
     "code", "sourceMap", "version",
     "isExternal", "dependencies", "diagnostics"
@@ -132,16 +131,14 @@ function createCSResult(result) {
   return new CSResult(result);
 }
 
-exports.createCSResult = createCSResult;
+export class CSResult {
+  constructor(result) {
+    assert.ok(this instanceof CSResult);
 
-function CSResult(result) {
-  assert.ok(this instanceof CSResult);
+    _.extend(this, result);
+  }
 
-  _.extend(this, result);
+  upDiagnostics(diagnostics) {
+    this.diagnostics = new tsu.TsDiagnostics(diagnostics);
+  }
 }
-
-var CRP = CSResult.prototype;
-
-CRP.upDiagnostics = function(diagnostics) {
-  this.diagnostics = new tsu.TsDiagnostics(diagnostics);
-};

@@ -7,16 +7,16 @@ function Logger() {
 
 var LP = Logger.prototype;
 
-LP.debug = function(format, arg) {
+LP.debug = function(format, ...args) {
   if (this.isDebug()) {
-    var msg = arg ? util.format(format, arg) : format;
+    var msg = args.length ? util.format(format, ...args) : format;
     console.log(this.prefix + msg);
   }
 };
 
-LP.assert = function(format, arg) {
+LP.assert = function(format, ...args) {
   if (this.isAssert()) {
-    var msg = arg ? util.format(format, arg) : format;
+    var msg = args.length ? util.format(format, ...args) : format;
     console.log(this.prefix + msg);
   }
 };

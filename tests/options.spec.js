@@ -53,17 +53,6 @@ describe("meteor-typescript -> ", function() {
       expect(result.code).toContain("System.register");
     });
 
-    it("should add module with moduleName name when moduleName is set", function() {
-        var result = meteorTS.compile(testCodeLine, getOptions({
-          compilerOptions: {
-            module: "system"
-          },
-          moduleName: "fooModule"
-        }));
-        expect(result.code.indexOf("System.register(\"fooModule\""))
-          .toEqual(0);
-    });
-
     it("should throw on wrong compiler option", function() {
       var test = function() {
           meteorTS.compile(testCodeLine, getOptions({
@@ -83,7 +72,7 @@ describe("meteor-typescript -> ", function() {
       };
 
       expect(test).toThrow(new Error("Unknown option: wrong.\n" +
-        "Valid options are compilerOptions, filePath, moduleName, and typings."));
+        "Valid options are compilerOptions, filePath, and typings."));
     });
 
     it("should validate tsconfig", function() {
