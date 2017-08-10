@@ -1,38 +1,37 @@
-var ts = require("typescript");
-var _ = require("underscore");
+import ts from "typescript";
+import _ from "underscore";
 
-var ROOTED = /^(\/|\\)/;
+const ROOTED = /^(\/|\\)/;
 
-var filesMap = ts.createFileMap();
+const filesMap = ts.createFileMap();
 
-function SourceHost() {}
-
-var SH = SourceHost.prototype;
-
-SH.setSource = function(fileSource) {
-  this.fileSource = fileSource;
-};
-
-SH.get = function(filePath) {
-  if (this.fileSource) {
-    var source = this.fileSource(filePath);
-    if (_.isString(source)) return source;
+class SourceHost {
+  setSource(fileSource) {
+    this.fileSource = fileSource;
   }
 
-  if (filesMap.contains(filePath)) {
-    return filesMap.get(filePath);
+  get(filePath) {
+    if (this.fileSource) {
+      const source = this.fileSource(filePath);
+      if (_.isString(source)) return source;
+    }
+
+    if (filesMap.contains(filePath)) {
+      return filesMap.get(filePath);
+    }
+
+    return null;
   }
 
-  return null;
-};
+  normalizePath(filePath) {
+    if (!filePath) return null;
 
-SH.normalizePath = function(filePath) {
-  if (! filePath) return null;
-  var normPath = filePath.replace(ROOTED, '');
-  if (! filesMap.contains(normPath)) {
-    return normPath;
+    const normPath = filePath.replace(ROOTED, '');
+    if (!filesMap.contains(normPath)) {
+      return normPath;
+    }
+    return filePath;
   }
-  return filePath;
 }
 
-exports.sourceHost = new SourceHost();
+module.exports = new SourceHost();

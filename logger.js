@@ -48,15 +48,15 @@ function Profiler(name) {
 var PP = Profiler.prototype;
 
 PP.start = function() {
-  console.log('%s started', this.name);
-  console.time(util.format('%s time', this.name));
+  console.log("%s started", this.name);
+  console.time(util.format("%s time", this.name));
   this._started = true;
 };
 
 PP.end = function() {
   if (this._started) {
-    console.timeEnd(util.format('%s time', this.name));
+    console.timeEnd(util.format("%s time", this.name));
   }
 };
 
-exports.Logger = new Logger();
+export default new Logger();

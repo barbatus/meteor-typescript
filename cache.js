@@ -6,8 +6,8 @@ var sizeof = require('object-sizeof');
 var random = require("random-js")();
 
 var utils = require("./utils");
-var globalSourceHost = require("./files-source-host").sourceHost;
-var Logger = require("./logger").Logger;
+var globalSourceHost = require("./files-source-host");
+var logger = require("./logger").default;
 
 var pkgVersion = require("../package.json").version;
 
@@ -44,19 +44,19 @@ function Cache(length) {
       return sizeof(obj);
     }
   });
-};
+}
 
 exports.Cache = Cache;
 
 var Cp = Cache.prototype;
 
 Cp._get = function(cacheKey) {
-  var pget = Logger.newProfiler("cache get");
+  var pget = logger.newProfiler("cache get");
   var result = this._cache.get(cacheKey);
   pget.end();
 
-  if (! result) {
-    var pread = Logger.newProfiler("cache read");
+  if (!result) {
+    var pread = logger.newProfiler("cache read");
     result = this._readCache(cacheKey);
     pread.end();
   }
@@ -65,7 +65,7 @@ Cp._get = function(cacheKey) {
 };
 
 Cp._save = function(cacheKey, result) {
-  var psave = Logger.newProfiler("cache save");
+  var psave = logger.newProfiler("cache save");
   this._cache.set(cacheKey, result);
   this._writeCacheAsync(cacheKey, result);
   psave.end();
@@ -109,13 +109,13 @@ Cp._readAndParseCompileResultOrNull = function(filename) {
 }
 
 Cp._readCache = function(cacheKey) {
-  if (! this.cacheDir) {
+  if (!this.cacheDir) {
     return null;
   }
 
   var cacheFilename = this._cacheFilename(cacheKey);
   var compileResult = this._readAndParseCompileResultOrNull(cacheFilename);
-  if (! compileResult) {
+  if (!compileResult) {
     return null;
   }
   this._cache.set(cacheKey, compileResult);
@@ -125,11 +125,11 @@ Cp._readCache = function(cacheKey) {
 
 // We want to write the file atomically.
 // But we also don't want to block processing on the file write.
-Cp._writeFileAsync = function(filename, contents) {
+Cp._writeFileAsync = function(filename, content) {
   var tempFilename = filename + ".tmp." + random.uuid4();
-  fs.writeFile(tempFilename, contents, function(err) {
-    // ignore errors, it's just a cache
+  fs.writeFile(tempFilename, content, function(err) {
     if (err) {
+      logger.debug("file can't be save: %s", err.message);
       return;
     }
     fs.rename(tempFilename, filename, function(err) {
@@ -139,7 +139,7 @@ Cp._writeFileAsync = function(filename, contents) {
 }
 
 Cp._writeCacheAsync = function(cacheKey, compileResult) {
-  if (! this.cacheDir) return;
+  if (!this.cacheDir) return;
 
   var cacheFilename = this._cacheFilename(cacheKey);
   var cacheContents = JSON.stringify(compileResult);
@@ -162,7 +162,7 @@ CCp.get = function(filePath, options, compileFn) {
 
   var compileResult = this._get(cacheKey);
   if (compileResult) {
-    Logger.debug("file %s result is in cache", filePath);
+    logger.debug("file %s result is in cache", filePath);
   }
 
   var newResult = compileFn(compileResult);
@@ -197,11 +197,11 @@ CCp.resultChanged = function(filePath, options) {
   var cacheKey = utils.deepHash(pkgVersion, source, options);
   var compileResult = this._cache.get(cacheKey);
 
-  if (! compileResult) {
+  if (!compileResult) {
     compileResult = this._readCache(cacheKey);
   }
 
-  return ! compileResult;
+  return !compileResult;
 };
 
 exports.CompileCache = CompileCache;

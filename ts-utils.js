@@ -1,74 +1,73 @@
-var assert = require("assert");
-var ts = require("typescript");
-var _ = require("underscore");
+import assert from "assert";
+import ts from "typescript";
+import _ from "underscore";
 
-var assertProps = require("./utils").assertProps;
-var Logger = require("./logger").Logger;
+import { assertProps } from "./utils";
 
 // 1) Normalizes slashes in the file path
 // 2) Removes file extension
-function normalizePath(filePath) {
-  var resultName = filePath;
-  if (ts.fileExtensionIs(resultName, '.map')) {
-    resultName = resultName.replace('.map', '');
+export function normalizePath(filePath) {
+  let resultName = filePath;
+  if (ts.fileExtensionIs(filePath, ".map")) {
+    resultName = filePath.replace(/\.map$/, "");
   }
   return ts.removeFileExtension(
     ts.normalizeSlashes(resultName));
 }
 
-function getRootedPath(filePath) {
+export function getRootedPath(filePath) {
   if (ts.getRootLength(filePath) === 0) {
     return "/" + filePath;
   }
   return filePath;
 }
 
-function prepareSourceMap(sourceMapContent, fileContent, sourceMapPath) {
-  var sourceMapJson = JSON.parse(sourceMapContent);
+export function prepareSourceMap(sourceMapContent, fileContent, sourceMapPath) {
+  const sourceMapJson = JSON.parse(sourceMapContent);
   sourceMapJson.sourcesContent = [fileContent];
   sourceMapJson.sources = [sourceMapPath];
   return sourceMapJson;
 }
 
-/** 
+/**
  * Gets all local modules given sourceFile imports types from.
  * Supports transitivity, i.e., if some module (directly imported)
  * re-exports types from another module, this another module
  * will be in the output too.
  */
 function getDeps(sourceFile, checker) {
-  var modules = [];
+  const modules = [];
 
   function getModulePath(module) {
-    if (! module) return null;
+    if (!module) return null;
 
-    var decl = module.declarations[0];
-    var sf = decl.getSourceFile();
-    if (sf && ! sf.isDeclarationFile) {
+    const decl = module.declarations[0];
+    const sf = decl.getSourceFile();
+    if (sf && !sf.isDeclarationFile) {
       return sf.path;
     }
     return null;
   }
 
   function isExternal(module) {
-    var decl = module.declarations[0];
-    var sf = decl.getSourceFile();
+    const decl = module.declarations[0];
+    const sf = decl.getSourceFile();
     return sf.isDeclarationFile;
   }
 
   if (sourceFile.imports) {
-    var paths = new Set();
+    const paths = new Set();
     _.each(sourceFile.imports, function(importName) {
-      var module = checker.getSymbolAtLocation(importName);
+      const module = checker.getSymbolAtLocation(importName);
       if (module && !isExternal(module)) {
-        var path = getModulePath(module);
+        const path = getModulePath(module);
         if (path) {
           paths.add(path);
         }
-        var nodes = checker.getExportsOfModule(module);
+        const nodes = checker.getExportsOfModule(module);
         _.each(nodes, function(node) {
           if (node.parent && node.parent !== module) {
-            var path = getModulePath(node.parent);
+            const path = getModulePath(node.parent);
             if (path) {
               paths.add(path);
             }
@@ -77,11 +76,11 @@ function getDeps(sourceFile, checker) {
 
           // If directly imported module re-uses and exports of a type
           // from another module, add this module to the dependency as well.
-          var type = checker.getTypeAtLocation(node.declarations[0]);
+          const type = checker.getTypeAtLocation(node.declarations[0]);
           if (type && type.symbol) {
-            var typeModule = type.symbol.parent;
+            const typeModule = type.symbol.parent;
             if (typeModule !== module) {
-              var path = getModulePath(typeModule);
+              const path = getModulePath(typeModule);
               if (path) {
                 paths.add(path);
               }
@@ -98,31 +97,31 @@ function getDeps(sourceFile, checker) {
   return modules;
 }
 
-function getDepsAndRefs(sourceFile, typeChecker) {
+export function getDepsAndRefs(sourceFile, typeChecker) {
   assert.ok(typeChecker);
 
-  var modules = getDeps(sourceFile, typeChecker);
-  var refs = getRefs(sourceFile);
-  var mappings = getMappings(sourceFile);
+  const modules = getDeps(sourceFile, typeChecker);
+  const refs = getRefs(sourceFile);
+  const mappings = getMappings(sourceFile);
 
   return {
-    modules: modules,
+    modules,
+    mappings,
     refFiles: refs.refFiles,
     refTypings: refs.refTypings,
-    mappings: mappings
   };
 }
 
 function getMappings(sourceFile) {
-  var mappings = [];
+  const mappings = [];
   if (sourceFile.resolvedModules) {
-    var modules = sourceFile.resolvedModules;
+    const modules = sourceFile.resolvedModules;
     modules.forEach((module, modulePath) => {
       mappings.push({
         modulePath,
         resolvedPath: module ? ts.removeFileExtension(module.resolvedFileName) : null,
         external: module ? module.isExternalLibraryImport : false,
-        resolved: !!module
+        resolved: !!module,
       });
     });
   }
@@ -132,129 +131,105 @@ function getMappings(sourceFile) {
 function getRefs(sourceFile) {
   // Collect referenced file paths, e.g.:
   // /// <reference path=".." />
-  var refTypings = [], refFiles = [];
+  let refTypings = [], refFiles = [];
   if (sourceFile.referencedFiles) {
-    var refPaths = sourceFile.referencedFiles.map(function(ref) {
-      return ref.fileName;
-    });
-
-    refTypings = _.filter(refPaths, function(ref) {
-      return isTypings(ref);
-    });
-
-    refFiles = _.filter(refPaths, function(ref) {
-      return ! isTypings(ref);
-    });
+    const refPaths = sourceFile.referencedFiles.map((ref) => ref.fileName);
+    refTypings = _.filter(refPaths, (ref) => isTypings(ref));
+    refFiles = _.filter(refPaths, (ref) => !isTypings(ref));
   }
 
   // Collect resolved paths to referenced declaration types, e.g.:
   // /// <reference types=".." />
   if (sourceFile.resolvedTypeReferenceDirectiveNames) {
-    var modules = sourceFile.resolvedTypeReferenceDirectiveNames;
+    const modules = sourceFile.resolvedTypeReferenceDirectiveNames;
     modules.forEach((ref, lib) => {
-      if (! ref) return;
-
+      if (!ref) return;
       refTypings.push(ref.resolvedFileName);
     });
   }
 
   return {
-    refFiles: refFiles,
-    refTypings: refTypings
+    refFiles,
+    refTypings,
   };
 }
 
-function createDiagnostics(tsSyntactic, tsSemantic) {
+export function createDiagnostics(tsSyntactic, tsSemantic) {
   // Parse diagnostics to leave only info we need.
   var syntactic = flattenDiagnostics(tsSyntactic);
   var semantic = flattenDiagnostics(tsSemantic);
   return {
     syntacticErrors: syntactic,
-    semanticErrors: semantic
+    semanticErrors: semantic,
   };
 }
 
-function TsDiagnostics(diagnostics) {
-  assert.ok(this instanceof TsDiagnostics);
-  assert.ok(diagnostics);
-  assertProps(diagnostics, [
-    'syntacticErrors', 'semanticErrors'
-  ]);
+export class TsDiagnostics {
+  constructor(diagnostics) {
+    assert.ok(this instanceof TsDiagnostics);
+    assert.ok(diagnostics);
+    assertProps(diagnostics, [
+      "syntacticErrors", "semanticErrors",
+    ]);
 
-  _.extend(this, diagnostics);
+    _.extend(this, diagnostics);
+  }
+
+  hasErrors() {
+    return !!this.semanticErrors.length ||
+      !!this.syntacticErrors.length;
+  }
+
+  hasUnresolvedModules() {
+    const index = _.findIndex(this.semanticErrors, (msg) => 
+      msg.code === ts.Diagnostics.Cannot_find_module_0.code
+    );
+    return index !== -1;
+  }
 }
-
-var TDP = TsDiagnostics.prototype;
-
-TDP.hasErrors = function() {
-  return !! this.semanticErrors.length ||
-    !! this.syntacticErrors.length;
-}
-
-TDP.hasUnresolvedModules = function() {
-  var index = _.findIndex(this.semanticErrors, function(msg) {
-    return msg.code === ts.Diagnostics.Cannot_find_module_0.code;
-  });
-  return index !== -1;
-};
 
 function flattenDiagnostics(tsDiagnostics) {
-  var diagnostics = [];
+  const diagnostics = [];
 
-  var dLen = tsDiagnostics.length;
-  for (var i = 0; i < dLen; i++) {
-    var diagnostic = tsDiagnostics[i];
-    if (! diagnostic.file) continue;
+  const dLen = tsDiagnostics.length;
+  for (let i = 0; i < dLen; i++) {
+    const diagnostic = tsDiagnostics[i];
+    if (!diagnostic.file) continue;
 
-    var pos = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
-    var message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-    var line = pos.line + 1;
-    var column = pos.character + 1;
+    const pos = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+    const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
+    const line = pos.line + 1;
+    const column = pos.character + 1;
 
     diagnostics.push({
       code: diagnostic.code,
       fileName: diagnostic.file.fileName,
-      message: message,
-      line: line,
-      column: column
+      message,
+      line,
+      column,
     });
   }
 
   return diagnostics;
 }
 
-function hasErrors(diagnostics) {
-  if (! diagnostics) return true;
+export function hasErrors(diagnostics) {
+  if (!diagnostics) return true;
 
-  return !! diagnostics.semanticErrors.length ||
-    !! diagnostics.syntacticErrors.length;
+  return diagnostics.semanticErrors.length ||
+    diagnostics.syntacticErrors.length;
 }
 
-function isSourceMap(fileName) {
-  return ts.fileExtensionIs(fileName, '.map');
+export function isSourceMap(fileName) {
+  return ts.fileExtensionIs(fileName, ".map");
 }
 
-function isTypings(fileName) {
-  return ts.fileExtensionIs(fileName, '.d.ts');
+export function isTypings(fileName) {
+  return ts.fileExtensionIs(fileName, ".d.ts");
 }
 
-function getExcludeRegExp(exclude) {
-  if (! exclude) return exclude;
+export function getExcludeRegExp(exclude) {
+  if (!exclude) return exclude;
 
   return ts.getRegularExpressionForWildcard(exclude, "", "exclude");
 }
-
-exports.ts = {
-  TsDiagnostics: TsDiagnostics,
-  normalizePath: normalizePath,
-  prepareSourceMap: prepareSourceMap,
-  getDepsAndRefs: getDepsAndRefs,
-  getRefs: getRefs,
-  createDiagnostics: createDiagnostics,
-  hasErrors: hasErrors,
-  flattenDiagnostics: flattenDiagnostics,
-  isSourceMap: isSourceMap,
-  isTypings: isTypings,
-  getExcludeRegExp: getExcludeRegExp,
-  getRootedPath: getRootedPath
-};

@@ -8,6 +8,7 @@ describe("meteor-typescript -> ", () => {
   function getOptions(options) {
     if (! options) options = {};
     options.useCache = false;
+    options.evalDepth = 1;
     return options;
   }
 
@@ -78,7 +79,7 @@ describe("meteor-typescript -> ", () => {
       expect(result1.version).toEqual(result2.version);
     });
 
-    describe("diagnostics updates", () => {
+    describe("diagnostics updates ->", () => {
       it("should update diagnostics when file's module dependency has changed", () => {
         var indexCode = "export * from './foo5'";
         var importCodeLine = `
@@ -294,7 +295,7 @@ describe("meteor-typescript -> ", () => {
       expect(result2.code).toContain("te_");
     });
 
-    describe("path mappings", () => {
+    describe("path mappings ->", () => {
       it("path mappings should be replaced with rooted paths", () => {
         var foo12 = "import {foo} from 'foo/foo13'; const foo13 = foo;";
         var foo13 = testCodeLine;

@@ -12,13 +12,14 @@ import {
 } from "./options";
 
 import CompileService, { createCSResult } from "./compile-service";
-import { CompileServiceHost as ServiceHost } from "./compile-service-host";
-import { sourceHost } from "./files-source-host";
+import ServiceHost from "./compile-service-host";
+import sourceHost from "./files-source-host";
 import { CompileCache, FileHashCache } from "./cache";
 
-import { Logger } from "./logger";
+import logger from "./logger";
 import { deepHash } from "./utils";
-import { ts as tsu } from "./ts-utils";
+import { getExcludeRegExp } from "./ts-utils";
+import { RefsChangeType, evalRefsChangeMap } from './refs';
 
 let compileCache, fileHashCache;
 export function setCacheDir(cacheDir) {
@@ -99,7 +100,7 @@ function getCompileService(arch) {
  */
 export class TSBuild {
   constructor(filePaths, getFileContent, options = {}) {
-    Logger.debug("new build");
+    logger.debug("new build");
 
     const compilerOptions = evalCompilerOptions(
       options.arch, options.compilerOptions);
@@ -113,20 +114,20 @@ export class TSBuild {
 
     sourceHost.setSource(getFileContent);
 
-    const pset = Logger.newProfiler("set files");
+    const pset = logger.newProfiler("set files");
     const compileService = getCompileService(resOptions.arch);
     const serviceHost = compileService.getHost();
     serviceHost.setFiles(filePaths, resOptions);
     pset.end();
 
-    const prefs = Logger.newProfiler("refs eval");
+    const prefs = logger.newProfiler("refs eval");
     this.refsChangeMap = evalRefsChangeMap(filePaths,
       (filePath) => serviceHost.isFileChanged(filePath),
       (filePath) => {
         const csResult = compileCache.getResult(filePath,
           this.getFileOptions(filePath));
         return csResult ? csResult.dependencies : null;
-      });
+      }, resOptions.evalDepth || 1);
     prefs.end();
   }
 
@@ -134,28 +135,28 @@ export class TSBuild {
     // Omit arch to avoid re-compiling same files aimed for diff arch.
     // Prepare file options which besides general ones
     // should contain a module name.
-    const options = _.omit(this.options, 'arch', 'useCache');
+    const options = _.omit(this.options, "arch", "useCache", "evalDepth");
     const module = options.compilerOptions.module;
-    const moduleName = module === 'none' ? null :
+    const moduleName = module === "none" ? null :
       ts.removeFileExtension(filePath);
     return { options, moduleName };
   }
 
   emit(filePath) {
-    Logger.debug("emit file %s", filePath);
+    logger.debug("emit file %s", filePath);
 
     const options = this.options;
     const compileService = getCompileService(options.arch);
 
     const serviceHost = compileService.getHost();
-    if (! serviceHost.hasFile(filePath)) {
+    if (!serviceHost.hasFile(filePath)) {
       throw new Error(`File ${filePath} not found`);
     }
 
     const csOptions = this.getFileOptions(filePath);
 
     function compile() {
-      const pcomp = Logger.newProfiler(`compile ${filePath}`);
+      const pcomp = logger.newProfiler(`compile ${filePath}`);
       const result = compileService.compile(filePath, csOptions.moduleName);
       pcomp.end();
       return result;
@@ -167,10 +168,10 @@ export class TSBuild {
     }
 
     const isTypingsChanged = serviceHost.isTypingsChanged();
-    const pget = Logger.newProfiler("compileCache get");
+    const pget = logger.newProfiler("compileCache get");
     const result = compileCache.get(filePath, csOptions, (cacheResult) => {
-      if (! cacheResult) {
-        Logger.debug("cache miss: %s", filePath);
+      if (!cacheResult) {
+        logger.debug("cache miss: %s", filePath);
         return compile();
       }
 
@@ -179,7 +180,7 @@ export class TSBuild {
       // Referenced files have changed, which may need recompilation in some cases.
       // See https://github.com/Urigo/angular2-meteor/issues/102#issuecomment-191411701
       if (refsChange === RefsChangeType.FILES) {
-        Logger.debug("recompile: %s", filePath);
+        logger.debug("recompile: %s", filePath);
         return compile();
       }
 
@@ -187,12 +188,12 @@ export class TSBuild {
       // First case: file is not changed but contains unresolved modules
       // error from previous build (some node modules might have installed).
       // Second case: dependency modules or typings have changed.
-      const csResult = createCSResult(cacheResult);
+      const csResult = createCSResult(filePath, cacheResult);
       const tsDiag = csResult.diagnostics;
       const unresolved = tsDiag.hasUnresolvedModules();
       if (unresolved || refsChange !== RefsChangeType.NONE || isTypingsChanged) {
-        Logger.debug("diagnostics re-evaluation: %s", filePath);
-        const pdiag = Logger.newProfiler("diags update");
+        logger.debug("diagnostics re-evaluation: %s", filePath);
+        const pdiag = logger.newProfiler("diags update");
         csResult.upDiagnostics(
           compileService.getDiagnostics(filePath));
         pdiag.end();
@@ -200,7 +201,7 @@ export class TSBuild {
       }
 
       // Cached result is up to date, no action required.
-      Logger.debug("file from cached: %s", filePath);
+      logger.debug("file from cached: %s", filePath);
       return null;
     });
     pget.end();
@@ -209,100 +210,13 @@ export class TSBuild {
   }
 }
 
-const RefsChangeType = {
-  NONE: 0,
-  FILES: 1,
-  MODULES: 2,
-  TYPINGS: 3,
-};
-
-function evalRefsChangeMap(filePaths, isFileChanged, getRefs) {
-  const refsChangeMap = {};
-  filePaths.forEach((filePath) => {
-    if (refsChangeMap[filePath]) return;
-    refsChangeMap[filePath] = evalRefsChange(filePath,
-      isFileChanged, getRefs, refsChangeMap);
-    Logger.assert("set ref changes: %s %s", filePath, refsChangeMap[filePath]);
-  });
-  return refsChangeMap;
-}
-
-function evalRefsChange(filePath, isFileChanged, getRefs, refsChangeMap, depth = 0) {
-  // Depath of deps analysis.
-  if (depth >= 2) {
-    return RefsChangeType.NONE;
-  }
-
-  const refs = getRefs(filePath);
-  if (! refs) {
-    refsChangeMap[filePath] = RefsChangeType.NONE;
-    return RefsChangeType.NONE;
-  }
-
-  const refsChange = isRefsChanged(filePath, isFileChanged, refs);
-  if (refsChange !== RefsChangeType.NONE) {
-    refsChangeMap[filePath] = refsChange;
-    return refsChange;
-  }
-
-  const modules = refs.modules;
-  for (const mPath of modules) {
-    let result = refsChangeMap[mPath];
-    if (result === undefined) {
-      result = evalRefsChange(mPath, isFileChanged, getRefs, refsChangeMap, ++depth);
-    }
-    if (result !== RefsChangeType.NONE) {
-      refsChangeMap[filePath] = RefsChangeType.MODULES;
-      return RefsChangeType.MODULES;
-    }
-  }
-  refsChangeMap[filePath] = RefsChangeType.NONE;
-  return RefsChangeType.NONE;
-}
-
-function isRefsChanged(filePath, isFileChanged, refs) {
-  function isFilesChanged(files) {
-    if (! files) return false;
-
-    const tLen = files.length;
-    for (let i = 0; i < tLen; i++) {
-      if (isFileChanged(files[i])) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  if (refs) {
-    const typings = refs.refTypings;
-    if (isFilesChanged(typings)) {
-      Logger.debug("referenced typings changed in %s", filePath);
-      return RefsChangeType.TYPINGS;
-    }
-
-    const files = refs.refFiles;
-    if (isFilesChanged(files)) {
-      Logger.debug("referenced files changed in %s", filePath);
-      return RefsChangeType.FILES;
-    }
-
-    const modules = refs.modules;
-    if (isFilesChanged(modules)) {
-      Logger.debug("imported module changed in %s", filePath);
-      return RefsChangeType.MODULES;
-    }
-  }
-
-  return RefsChangeType.NONE;
-}
-
 export function compile(fileContent, options = {}) {
   if (typeof fileContent !== "string") {
     throw new Error("fileContent should be a string");
   }
 
   let optPath = options.filePath;
-  if (! optPath) {
+  if (!optPath) {
     optPath = deepHash(fileContent, options);
     const tsx = options.compilerOptions && options.compilerOptions.jsx;
     optPath += tsx ? ".tsx" : ".ts";
@@ -318,26 +232,27 @@ export function compile(fileContent, options = {}) {
   return newBuild.emit(optPath);
 };
 
-var validOptions = {
+const validOptions = {
   "compilerOptions": "Object",
   // Next three to be used mainly
   // in the compile method above.
   "filePath": "String",
   "typings": "Array",
   "arch": "String",
-  "useCache": "Boolean"
+  "useCache": "Boolean",
+  "evalDepth": "Number",
 };
-var validOptionsMsg = "Valid options are " +
-  "compilerOptions, filePath, and typings.";
+const validOptionsMsg =
+  "Valid options are compilerOptions, filePath, and typings.";
 
 function checkType(option, optionName) {
-  if (! option) return true;
+  if (!option) return true;
 
   return option.constructor.name === validOptions[optionName];
 }
 
 export function validateAndConvertOptions(options) {
-  if (! options) return null;
+  if (!options) return null;
 
   // Validate top level options.
   for (const option in options) {
@@ -370,4 +285,4 @@ export function getDefaultOptions(arch) {
 
 exports.validateTsConfig = validateTsConfig;
 
-exports.getExcludeRegExp = tsu.getExcludeRegExp;
+exports.getExcludeRegExp = getExcludeRegExp;

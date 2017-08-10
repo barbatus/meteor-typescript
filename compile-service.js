@@ -2,10 +2,18 @@ import assert from "assert";
 import ts from "typescript";
 import _ from "underscore";
 
-import { Logger } from "./logger";
-import { sourceHost } from "./files-source-host";
-import { ts as tsu } from "./ts-utils";
-import { assertProps } from "./utils";
+import logger from "./logger";
+import sourceHost from "./files-source-host";
+import {
+  normalizePath,
+  prepareSourceMap,
+  isSourceMap,
+  getDepsAndRefs,
+  getRefs,
+  createDiagnostics,
+  getRootedPath,
+  TsDiagnostics,
+} from "./ts-utils";
 
 export default class CompileService {
   constructor(serviceHost) {
@@ -25,29 +33,29 @@ export default class CompileService {
 
     let code, sourceMap;
     _.each(result.outputFiles, function(file) {
-      if (tsu.normalizePath(filePath) !==
-            tsu.normalizePath(file.name)) return;
+      if (normalizePath(filePath) !==
+            normalizePath(file.name)) return;
 
       const text = file.text;
-      if (tsu.isSourceMap(file.name)) {
+      if (isSourceMap(file.name)) {
         const source = sourceHost.get(filePath);
-        sourceMap = tsu.prepareSourceMap(text, source, filePath);
+        sourceMap = prepareSourceMap(text, source, filePath);
       } else {
         code = text;
       }
     }, this);
 
     const checker = this.getTypeChecker();
-    const pcs = Logger.newProfiler("process csresult");
-    const deps = tsu.getDepsAndRefs(sourceFile, checker);
+    const pcs = logger.newProfiler("process csresult");
+    const deps = getDepsAndRefs(sourceFile, checker);
     const meteorizedCode = this.rootifyPaths(code, deps.mappings); 
-    const csResult = createCSResult({
+    const csResult = createCSResult(filePath, {
       code: meteorizedCode,
       sourceMap,
       version: this.serviceHost.getScriptVersion(filePath),
       isExternal: ts.isExternalModule(sourceFile),
       dependencies: deps,
-      diagnostics: this.getDiagnostics(filePath)
+      diagnostics: this.getDiagnostics(filePath),
     });
     pcs.end();
 
@@ -69,11 +77,11 @@ export default class CompileService {
 
   getDepsAndRefs(filePath) {
     const checker = this.getTypeChecker();
-    return tsu.getDepsAndRefs(this.getSourceFile(filePath), checker);
+    return getDepsAndRefs(this.getSourceFile(filePath), checker);
   }
 
   getRefTypings(filePath) {
-    const refs = tsu.getRefs(this.getSourceFile(filePath));
+    const refs = getRefs(this.getSourceFile(filePath));
     return refs.refTypings;
   }
 
@@ -82,7 +90,7 @@ export default class CompileService {
   }
 
   getDiagnostics(filePath) {
-    return tsu.createDiagnostics(
+    return createDiagnostics(
       this.service.getSyntacticDiagnostics(filePath),
       this.service.getSemanticDiagnostics(filePath)
     );
@@ -95,7 +103,7 @@ export default class CompileService {
     }
 
     mappings = mappings.filter(module => module.resolved && !module.external);
-    Logger.assert("process mappings %s", mappings.map((module) => module.resolvedPath));
+    logger.assert("process mappings %s", mappings.map((module) => module.resolvedPath));
     for (const module of mappings) {
       const usedPath = module.modulePath;
       const resolvedPath = module.resolvedPath;
@@ -105,14 +113,14 @@ export default class CompileService {
       // to relative in the code.
       const regExp = buildPathRegExp(resolvedPath);
       code = code.replace(regExp, function(match, p1, p2, p3, offset) {
-        return p1 + tsu.getRootedPath(resolvedPath) + p3;
+        return p1 + getRootedPath(resolvedPath) + p3;
       });
 
       // Skip path replacement for dotted paths.
       if (! usedPath.startsWith(".")) {
         const regExp = buildPathRegExp(usedPath);
         code = code.replace(regExp, function(match, p1, p2, p3, offset) {
-          return p1 + tsu.getRootedPath(resolvedPath) + p3;
+          return p1 + getRootedPath(resolvedPath) + p3;
         });
       }
     }
@@ -120,12 +128,20 @@ export default class CompileService {
   }
 }
 
-export function createCSResult(result) {
-  assertProps(result, [
+export function createCSResult(filePath, result) {
+  const props = [
     "code", "sourceMap", "version",
-    "isExternal", "dependencies", "diagnostics"
-  ]);
-  result.diagnostics = new tsu.TsDiagnostics(
+    "isExternal", "dependencies", "diagnostics",
+  ];
+  const len = props.length;
+  for (let i = 0; i < len; i++) {
+    if (!_.has(result, props[i])) {
+      const msg = `file result ${filePath} doesn't contain ${props[i]}`;
+      logger.debug(msg);
+      throw new Error(msg);
+    }
+  }
+  result.diagnostics = new TsDiagnostics(
     result.diagnostics);
 
   return new CSResult(result);
@@ -139,6 +155,6 @@ export class CSResult {
   }
 
   upDiagnostics(diagnostics) {
-    this.diagnostics = new tsu.TsDiagnostics(diagnostics);
+    this.diagnostics = new TsDiagnostics(diagnostics);
   }
 }
