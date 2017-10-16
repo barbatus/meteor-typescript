@@ -20,12 +20,12 @@ export function evalRefsChangeMap(filePaths, isFileChanged, getRefs, maxDepth) {
 
 function evalRefsChange(filePath, isFileChanged, getRefs, refsChangeMap, depth) {
   // Depth of deps analysis.
-  if (depth == 0) {
+  if (depth === 0) {
     return RefsChangeType.NONE;
   }
 
   const refs = getRefs(filePath);
-  if (! refs) {
+  if (!refs) {
     refsChangeMap[filePath] = RefsChangeType.NONE;
     return RefsChangeType.NONE;
   }
@@ -53,7 +53,7 @@ function evalRefsChange(filePath, isFileChanged, getRefs, refsChangeMap, depth) 
 
 function isRefsChanged(filePath, isFileChanged, refs) {
   function isFilesChanged(files) {
-    if (! files) return false;
+    if (!files) return false;
 
     const tLen = files.length;
     for (let i = 0; i < tLen; i++) {
