@@ -1,5 +1,5 @@
 declare module "lib" {
-  export let api = {};
+  export let api;
 }
 
 declare var React: any;

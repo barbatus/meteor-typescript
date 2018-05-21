@@ -2,4 +2,4 @@
 
 TypeScript wrapped for Meteor.
 
-Based on TypeScript@2.5.3.
+Based on TypeScript@2.8.3.
